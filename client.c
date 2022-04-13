@@ -88,7 +88,6 @@ int main(int argc, char *argv[])
 
     // Reception des données du serveur 
     lus = read(socketClient, messageRecu, longueurMessage*sizeof(char));
-    
     switch(lus)
     {
         case -1: 
@@ -105,5 +104,6 @@ int main(int argc, char *argv[])
 
     // On a fini on coupe la ressource pour quitter
     close(socketClient);
+
     return 0;
 }
