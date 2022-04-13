@@ -34,10 +34,10 @@ int main(int argc, char *argv[])
     // afin de vérifier la bonne création de cela
     if(socketClient < 0)
     {
-        perror("socket not created");
+        perror("socket echoué");
         exit(-1); // On sort en indiquant un code erreur
     }
-    printf("la Socket created successfully ! (%d)\n", socketClient);
+    printf("la Socket a été bien créé ! (%d)\n", socketClient);
     
     
     longueurAdresse = sizeof(pointDeRencontreDistant);
@@ -57,19 +57,23 @@ int main(int argc, char *argv[])
 
     if((connect(socketClient, (struct sockaddr *)&pointDeRencontreDistant, longueurAdresse)) == -1)
     {
-        perror("connect failed");
+        perror("connect");
         close(socketClient); // on ferme la ressourece pour quitter
         exit(-2);
     }
 
-    printf("Connection success with the server \n");
+    printf("Connection reussi avec the server \n");
 
     // Initialisation à 0 les messages 
     memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
     memset(messageRecu, 0x00, longueurMessage*sizeof(char));
 
     // Envoie un message au serveur et gestion des erreurs
-    sprintf(messageEnvoi, "Holla");
+    //sprintf(messageEnvoi, "Holla");
+    
+    printf("envoyez un message : ");
+    scanf("%s", &messageEnvoi);
+
     ecrits = write(socketClient, messageEnvoi,strlen(messageEnvoi));
 
     switch(ecrits)
