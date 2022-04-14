@@ -105,7 +105,6 @@ int main(int argc, char *argv[])
         default:
             printf("Message recu du serveur : %s (%d octets)\n\n",messageRecu,lus);
     }
-
     // On a fini on coupe la ressource pour quitter
     close(socketClient);
 

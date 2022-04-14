@@ -21,6 +21,9 @@ int main(int argc, char *argv[])
     int ecrits, lus; 
     int retour;
 
+    //POUR SAVOIR SI LES DEUX CLIENTS SONT CONNECTE
+    int connect[2] = {-1,-1};
+
     // Création d'un socket de communication
     // PF_INET c'est le domaine pour le protocole internet IPV4 
     socketServeur = socket(PF_INET, SOCK_STREAM, 0);
@@ -69,15 +72,10 @@ int main(int argc, char *argv[])
     printf("Socket in listening! \n");
 
     // Boucle d'attente de connexion: en théorie, un  serveur attend indéfiniment à modifier avec des processus
-
-    while(1)
+    int i =0;
+    while( i < 2)
     {
-        memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
-        memset(messageRecu, 0x00, longueurMessage*sizeof(char));
-        printf("Attente d'une demande de connexion (quitter avec Ctrl-C) \n\n");
-        // c'est un appel bloquant 
         socketDialogue = accept(socketServeur, (struct sockaddr *)&pointDeRencontreDistant, &longueurAdresse);
-
         if(socketDialogue < 0)
         {
             perror("accept");
@@ -85,10 +83,19 @@ int main(int argc, char *argv[])
             close(socketServeur);
             exit(-4);
         }
+        connect[i] = socketDialogue;
+        i++; 
+    }
+
+    while(1)
+    {
+        memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
+        memset(messageRecu, 0x00, longueurMessage*sizeof(char));
+        printf("Attente d'une demande de connexion (quitter avec Ctrl-C) \n\n");
+        // c'est un appel bloquant 
 
         // On réception les données du client (cf. protocole)
-        lus = read(socketDialogue,messageRecu,longueurMessage*sizeof(char));
-
+        lus = read(connect[0],messageRecu,longueurMessage*sizeof(char));
         switch(lus)
         {
             case -1: 
@@ -103,10 +110,8 @@ int main(int argc, char *argv[])
                 printf("Message recu du client : %s (%d octets)\n\n",messageRecu,lus);
         }
 
-        //On envoie des données vers le client (cf. protocole)
-        sprintf(messageEnvoi, "ok\n");    
-        ecrits = write(socketDialogue, messageEnvoi,strlen(messageEnvoi));
-        
+        //On envoie des données vers le client (cf. protocole)    
+        ecrits = write(connect[1], messageRecu,strlen(messageRecu));
         switch(ecrits)
         {
             case -1: 
@@ -120,9 +125,11 @@ int main(int argc, char *argv[])
             default:
                 printf("Message %s envoyé avec succés (%d octets)\n\n",messageEnvoi,ecrits);
         }
+        int echange = connect[0];
+        connect[1] = connect[0];
+        connect[0] = echange;
 
         // on ferme la socket de dialogue et on se replace en attente
-        close(socketDialogue);
     }
 
     close(socketServeur);
