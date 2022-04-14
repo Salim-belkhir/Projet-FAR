@@ -70,75 +70,86 @@ int main(int argc, char *argv[])
     }
 
     printf("Socket in listening! \n");
+    int i ;
+    int fin;
 
-    // Boucle d'attente de connexion: en théorie, un  serveur attend indéfiniment à modifier avec des processus
-    int i =0;
-    while( i < 2)
-    {
-        printf("Attente d'une demande de connexion (quitter avec Ctrl-C) \n\n");
-        // c'est un appel bloquant 
-        socketDialogue = accept(socketServeur, (struct sockaddr *)&pointDeRencontreDistant, &longueurAdresse);
-        if(socketDialogue < 0)
+    while(1){
+        // Boucle d'attente de connexion: en théorie, un  serveur attend indéfiniment à modifier avec des processus
+        i = 0;
+        while( i < 2)
         {
-            perror("accept");
-            close(socketDialogue);
-            close(socketServeur);
-            exit(-4);
+            printf("Attente d'une demande de connexion (quitter avec Ctrl-C) \n\n");
+            // c'est un appel bloquant 
+            socketDialogue = accept(socketServeur, (struct sockaddr *)&pointDeRencontreDistant, &longueurAdresse);
+            if(socketDialogue < 0)
+            {
+                perror("accept");
+                close(socketDialogue);
+                close(socketServeur);
+                exit(-4);
+            }
+            connect[i] = socketDialogue;
+            i++; 
         }
-        connect[i] = socketDialogue;
-        i++; 
+        
+        fin = 1;
+
+        while(fin)
+        {
+            memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
+            memset(messageRecu, 0x00, longueurMessage*sizeof(char));
+
+            // On réception les données du client (cf. protocole)
+            lus = read(connect[0],messageRecu,longueurMessage*sizeof(char));
+            switch(lus)
+            {
+                case -1: 
+                    perror("read");
+                    close(connect[0]);
+                    close(connect[1]);
+                    exit(-5);
+                case 0:
+                    fprintf(stderr, "La socket a été fermée par le client !\n\n");
+                    close(connect[0]);
+                    close(connect[1]);
+                    fin = 0;
+                default:
+                    printf("Message recu du client : %s (%d octets)\n\n",messageRecu,lus);
+            }
+
+            //On envoie des données vers le client (cf. protocole)    
+            sprintf(messageEnvoi,messageRecu);
+
+            if(fin){
+                ecrits = write(connect[1], messageEnvoi,strlen(messageEnvoi));
+                switch(ecrits)
+                {
+                    case -1: 
+                        perror("write");
+                        close(connect[0]);
+                        close(connect[1]);
+                        exit(-6);
+                    case 0:
+                        fprintf(stderr, "La socket a été fermée par le client !\n\n");
+                        close(connect[0]);
+                        close(connect[1]);
+                        fin = 0;
+                    default:
+                        printf("Message %s envoyé avec succés (%d octets)\n\n",messageEnvoi,ecrits);
+                }
+            }   
+            else{
+                printf("[!]Connexion interrompue avec les deux clients \n \n");
+            }
+            int echange = connect[1];
+            connect[1] = connect[0];
+            connect[0] = echange;
+            
+        }
+
     }
 
-    while(1)
-    {
-        memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
-        memset(messageRecu, 0x00, longueurMessage*sizeof(char));
-
-        // On réception les données du client (cf. protocole)
-        lus = read(connect[0],messageRecu,longueurMessage*sizeof(char));
-        switch(lus)
-        {
-            case -1: 
-                perror("read");
-                close(connect[0]);
-                close(connect[1]);
-                exit(-5);
-            case 0:
-                fprintf(stderr, "La socket a été fermée par le client !\n\n");
-                close(connect[0]);
-                close(connect[1]);
-                return 0;
-            default:
-                printf("Message recu du client : %s (%d octets)\n\n",messageRecu,lus);
-        }
-
-        //On envoie des données vers le client (cf. protocole)    
-        sprintf(messageEnvoi,messageRecu);
-        ecrits = write(connect[1], messageEnvoi,strlen(messageEnvoi));
-        switch(ecrits)
-        {
-            case -1: 
-                perror("write");
-                close(connect[0]);
-                close(connect[1]);
-                exit(-6);
-            case 0:
-                fprintf(stderr, "La socket a été fermée par le client !\n\n");
-                close(connect[0]);
-                close(connect[1]);
-                return 0;
-            default:
-                printf("Message %s envoyé avec succés (%d octets)\n\n",messageEnvoi,ecrits);
-        }
-        printf("connect 0 : %d \n", connect[0]);
-        printf("connect 1 : %d \n", connect[1]);    
-        int echange = connect[1];
-        connect[1] = connect[0];
-        connect[0] = echange;
-        printf("connect 0 : %d \n", connect[0]);
-        printf("connect 1 : %d \n", connect[1]);
-    }
-
+    
     close(socketServeur);
     return 0;
 }
