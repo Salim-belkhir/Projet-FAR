@@ -64,49 +64,52 @@ int main(int argc, char *argv[])
 
     printf("Connection reussi avec the server \n");
 
-    // Initialisation à 0 les messages 
-    memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
-    memset(messageRecu, 0x00, longueurMessage*sizeof(char));
 
-    // Envoie un message au serveur et gestion des erreurs
-    //sprintf(messageEnvoi, "Holla");
-    
-    printf("envoyez un message : ");
-    scanf("%s", &messageEnvoi);
-
-    ecrits = write(socketClient, messageEnvoi,strlen(messageEnvoi));
-
-    switch(ecrits)
+    while(strcmp(messageEnvoi , "fin") != 0)
     {
-        case -1: 
-            perror("write");
-            close(socketClient);
-            exit(-3);
-        case 0:
-            fprintf(stderr, "La socket a été fermée par le serveur !\n\n");
-            close(socketClient);
-            return 0;
-        default:
-            printf("Message %s envoyé avec succés (%d octets)\n\n",messageEnvoi,ecrits);
-    }
+        // Initialisation à 0 les messages 
+        memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
+        memset(messageRecu, 0x00, longueurMessage*sizeof(char));
 
-    // Reception des données du serveur 
-    lus = read(socketClient, messageRecu, longueurMessage*sizeof(char));
-    switch(lus)
-    {
-        case -1: 
-            perror("read");
-            close(socketClient);
-            exit(-4);
-        case 0:
-            fprintf(stderr, "La socket a été fermée par le serveur !\n\n");
-            close(socketClient);
-            return 0;
-        default:
-            printf("Message recu du serveur : %s (%d octets)\n\n",messageRecu,lus);
-    }
+        // Envoie un message au serveur et gestion des erreurs
+        //sprintf(messageEnvoi, "Holla");
+        
+        printf("envoyez un message : ");
+        scanf("%s", &messageEnvoi);
+
+        ecrits = write(socketClient, messageEnvoi,strlen(messageEnvoi));
+
+        switch(ecrits)
+        {
+            case -1: 
+                perror("write");
+                close(socketClient);
+                exit(-3);
+            case 0:
+                fprintf(stderr, "La socket a été fermée par le serveur !\n\n");
+                close(socketClient);
+                return 0;
+            default:
+                printf("Message %s envoyé avec succés (%d octets)\n\n",messageEnvoi,ecrits);
+        }
+
+        // Reception des données du serveur 
+        lus = read(socketClient, messageRecu, longueurMessage*sizeof(char));
+        switch(lus)
+        {
+            case -1: 
+                perror("read");
+                close(socketClient);
+                exit(-4);
+            case 0:
+                fprintf(stderr, "La socket a été fermée par le serveur !\n\n");
+                close(socketClient);
+                return 0;
+            default:
+                printf("Message recu du serveur : %s (%d octets)\n\n",messageRecu,lus);
+        }
+    }    
     // On a fini on coupe la ressource pour quitter
     close(socketClient);
-
     return 0;
 }
