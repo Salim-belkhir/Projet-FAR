@@ -5,6 +5,8 @@
 #include <sys/types.h>
 #include <netinet/in.h> /* pour struct sockaddr_in */
 #include <arpa/inet.h> /* pour htons et inet_aton */
+#include <pthread.h>
+#include <unistd.h>
 
 #define longueurMessage 256
 

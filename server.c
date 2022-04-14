@@ -5,9 +5,112 @@
 #include <sys/types.h>
 #include <netinet/in.h> /* pour struct sockaddr_in */
 #include <arpa/inet.h> /* pour htons et inet_aton */
-
+#include <pthread.h>
+#include <unistd.h>
 
 #define longueurMessage 256
+
+int connec[2] = {-1,-1};
+
+void * Relayer1()
+{
+    
+    char messageEnvoi[longueurMessage];
+    char messageRecu[longueurMessage];
+    int ecrits, lus; 
+    // On réception les données du client (cf. protocole)
+    while(1)
+    {
+        memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
+        memset(messageRecu, 0x00, longueurMessage*sizeof(char));
+        lus = read(connec[0],messageRecu,longueurMessage*sizeof(char));
+        switch(lus)
+        {
+            case -1: 
+                perror("read");
+                
+                close(connec[0]);
+                close(connec[1]);
+                exit(-5);
+            case 0:
+                fprintf(stderr, "La socket a été fermée par le client !\n\n");
+                close(connec[0]);
+                close(connec[1]);
+            default:
+                printf("Message recu du client : %s (%d octets)\n\n",messageRecu,lus);
+        }
+
+        //On envoie des données vers le client (cf. protocole)    
+        sprintf(messageEnvoi,messageRecu);
+        ecrits = write(connec[1], messageEnvoi,strlen(messageEnvoi));
+        switch(ecrits)
+        {
+            case -1: 
+                perror("write");
+                close(connec[0]);
+                close(connec[1]);
+                exit(-6);
+            case 0:
+                fprintf(stderr, "La socket a été fermée par le client !\n\n");
+                close(connec[0]);
+                close(connec[1]);
+            default:
+                printf("Message %s envoyé avec succés (%d octets)\n\n",messageEnvoi,ecrits);
+        }
+    }
+}
+
+
+void * Relayer2()
+{
+    char messageEnvoi[longueurMessage];
+    char messageRecu[longueurMessage];
+    int ecrits, lus; 
+
+    memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
+    memset(messageRecu, 0x00, longueurMessage*sizeof(char));
+    // On réception les données du client (cf. protocole)
+    while(1)
+    {
+        memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
+        memset(messageRecu, 0x00, longueurMessage*sizeof(char));
+        lus = read(connec[1],messageRecu,longueurMessage*sizeof(char));
+        switch(lus)
+        {
+            case -1: 
+                perror("read");
+                close(connec[0]);
+                close(connec[1]);
+                exit(-5);
+            case 0:
+                fprintf(stderr, "La socket a été fermée par le client !\n\n");
+                close(connec[0]);
+                close(connec[1]);
+            default:
+                printf("Message recu du client : %s (%d octets)\n\n",messageRecu,lus);
+        }
+
+        //On envoie des données vers le client (cf. protocole)    
+        sprintf(messageEnvoi,messageRecu);
+
+        ecrits = write(connec[0], messageEnvoi,strlen(messageEnvoi));
+        switch(ecrits)
+        {
+            case -1: 
+                perror("write");
+                close(connec[0]);
+                close(connec[1]);
+                exit(-6);
+            case 0:
+                fprintf(stderr, "La socket a été fermée par le client !\n\n");
+                close(connec[0]);
+                close(connec[1]);
+            default:
+                printf("Message %s envoyé avec succés (%d octets)\n\n",messageEnvoi,ecrits);
+        }
+    }
+}
+
 int main(int argc, char *argv[]) 
 {
     int socketServeur;
@@ -16,13 +119,15 @@ int main(int argc, char *argv[])
 
     int socketDialogue;
     struct sockaddr_in pointDeRencontreDistant;
-    char messageEnvoi[longueurMessage];
-    char messageRecu[longueurMessage];
-    int ecrits, lus; 
     int retour;
 
+    //  Creation des threads pour envoyer et recevoir des messages 
+    pthread_t tRelay1;
+    pthread_t tRelay2;
+    
+    
     //POUR SAVOIR SI LES DEUX CLIENTS SONT CONNECTE
-    int connect[2] = {-1,-1};
+    //int connect[2] = {-1,-1};
 
     // Création d'un socket de communication
     // PF_INET c'est le domaine pour le protocole internet IPV4 
@@ -71,8 +176,6 @@ int main(int argc, char *argv[])
 
     printf("Socket in listening! \n");
     int i ;
-    int fin;
-
     while(1){
         // Boucle d'attente de connexion: en théorie, un  serveur attend indéfiniment à modifier avec des processus
         i = 0;
@@ -88,68 +191,16 @@ int main(int argc, char *argv[])
                 close(socketServeur);
                 exit(-4);
             }
-            connect[i] = socketDialogue;
+            connec[i] = socketDialogue;
             i++; 
         }
         
-        fin = 1;
-
-        while(fin)
-        {
-            memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
-            memset(messageRecu, 0x00, longueurMessage*sizeof(char));
-
-            // On réception les données du client (cf. protocole)
-            lus = read(connect[0],messageRecu,longueurMessage*sizeof(char));
-            switch(lus)
-            {
-                case -1: 
-                    perror("read");
-                    close(connect[0]);
-                    close(connect[1]);
-                    exit(-5);
-                case 0:
-                    fprintf(stderr, "La socket a été fermée par le client !\n\n");
-                    close(connect[0]);
-                    close(connect[1]);
-                    fin = 0;
-                default:
-                    printf("Message recu du client : %s (%d octets)\n\n",messageRecu,lus);
-            }
-
-            //On envoie des données vers le client (cf. protocole)    
-            sprintf(messageEnvoi,messageRecu);
-
-            if(fin){
-                ecrits = write(connect[1], messageEnvoi,strlen(messageEnvoi));
-                switch(ecrits)
-                {
-                    case -1: 
-                        perror("write");
-                        close(connect[0]);
-                        close(connect[1]);
-                        exit(-6);
-                    case 0:
-                        fprintf(stderr, "La socket a été fermée par le client !\n\n");
-                        close(connect[0]);
-                        close(connect[1]);
-                        fin = 0;
-                    default:
-                        printf("Message %s envoyé avec succés (%d octets)\n\n",messageEnvoi,ecrits);
-                }
-            }   
-            else{
-                printf("[!]Connexion interrompue avec les deux clients \n \n");
-            }
-            int echange = connect[1];
-            connect[1] = connect[0];
-            connect[0] = echange;
-            
-        }
+        pthread_create(&tRelay1, NULL, Relayer1, NULL); 
+        pthread_create(&tRelay2, NULL, Relayer2, NULL);
+        pthread_join(tRelay1, NULL);    
+        pthread_join(tRelay2, NULL);
 
     }
-
-    
     close(socketServeur);
     return 0;
 }
