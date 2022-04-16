@@ -13,7 +13,7 @@
 void * Envoyer(void * socketClient)
 {
     int ecrits;
-    int a = (long)socketClient;
+    int socket = (long)socketClient;
     // le message de la couche application ! 
     char messageEnvoi[longueurMessage];
     // Envoie un message au serveur et gestion des erreurs
@@ -21,21 +21,22 @@ void * Envoyer(void * socketClient)
     while(strcmp(messageEnvoi , "fin") != 0)
     {
         memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
-        printf("envoyez un message : ");
-        scanf("%s", messageEnvoi);
-        ecrits = write(a, messageEnvoi,strlen(messageEnvoi));
+        puts("\n→ Envoyer Un Message :");
+        fgets(messageEnvoi, longueurMessage*sizeof(char),stdin);
+        messageEnvoi[strlen(messageEnvoi) - 1]=0;
+        ecrits = write(socket, messageEnvoi,strlen(messageEnvoi));
         switch(ecrits)
         {
             case -1: 
                 perror("write");
-                close(a);
+                close(socket);
                 exit(-3);
             case 0:
                 fprintf(stderr, "La socket a été fermée par le serveur !\n\n");
-                close(a);
+                close(socket);
                 exit(0);
             default:
-                printf("Message %s envoyé avec succés (%d octets)\n\n",messageEnvoi,ecrits);
+                printf("Message %s envoyé avec succés (%d octets)\n",messageEnvoi,ecrits);
         }
     } 
     pthread_exit(0);
@@ -50,7 +51,7 @@ void * Recevoir(void * socketClient)
      
     char messageRecu[longueurMessage];
     int socket = (long)socketClient;
-        while (1)
+    while (1)
     {
         memset(messageRecu, 0x00, longueurMessage*sizeof(char));
         lus = read(socket, messageRecu, longueurMessage*sizeof(char));
@@ -65,8 +66,13 @@ void * Recevoir(void * socketClient)
                 close(socket);
                 return 0;
             default:
-                printf("\nMessage recu du serveur : %s (%d octets)\n\n",messageRecu,lus);
+                //puts(messageRecu);
+                printf("\nMessage recu du serveur → ");
+                puts(messageRecu);
+                puts("\n→ Envoyer Un Message :");
         }
+        
+        
     }   
 }
 
