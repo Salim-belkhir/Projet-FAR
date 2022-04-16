@@ -191,6 +191,7 @@ int main(int argc, char *argv[])
                 close(socketServeur);
                 exit(-4);
             }
+            printf("%d\n", socketDialogue);
             connec[i] = socketDialogue;
             i++; 
         }

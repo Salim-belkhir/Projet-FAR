@@ -18,10 +18,11 @@ void * Envoyer(void * socketClient)
     char messageEnvoi[longueurMessage];
     // Envoie un message au serveur et gestion des erreurs
     //sprintf(messageEnvoi, "Holla");
-    while(strcmp(messageEnvoi , "fin") != 0)
+    while(1)
     {
         memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
-        puts("\n→ Envoyer Un Message :");
+        puts("\n↔↔↔ Envoyer Un Message ↔↔↔");
+        printf("→ ");
         fgets(messageEnvoi, longueurMessage*sizeof(char),stdin);
         messageEnvoi[strlen(messageEnvoi) - 1]=0;
         ecrits = write(socket, messageEnvoi,strlen(messageEnvoi));
@@ -34,11 +35,11 @@ void * Envoyer(void * socketClient)
             case 0:
                 fprintf(stderr, "La socket a été fermée par le serveur !\n\n");
                 close(socket);
-                exit(0);
+                exit(-4);
             default:
                 printf("Message %s envoyé avec succés (%d octets)\n",messageEnvoi,ecrits);
         }
-    } 
+    }
     pthread_exit(0);
 }
 
@@ -48,7 +49,6 @@ void * Recevoir(void * socketClient)
     int lus;
 
     // le message de la couche application!
-     
     char messageRecu[longueurMessage];
     int socket = (long)socketClient;
     while (1)
@@ -69,11 +69,13 @@ void * Recevoir(void * socketClient)
                 //puts(messageRecu);
                 printf("\nMessage recu du serveur → ");
                 puts(messageRecu);
-                puts("\n→ Envoyer Un Message :");
+
+                // On a fini d'afficher le message recu on affiche la demande d'envoie
+                puts("\n↔↔↔ Envoyer Un Message ↔↔↔");
+                puts("→ ");
         }
-        
-        
-    }   
+    }
+    pthread_exit(0);   
 }
 
 int main(int argc, char *argv[]) 
@@ -81,7 +83,6 @@ int main(int argc, char *argv[])
     long socketClient;
     struct sockaddr_in pointDeRencontreDistant;
     socklen_t longueurAdresse;
-
 
     //  Creation des threads pour envoyer et recevoir des messages 
     pthread_t tEcouter;
