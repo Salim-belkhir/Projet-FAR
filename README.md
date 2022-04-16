@@ -8,8 +8,8 @@ gcc -o -lpthread client client(1ou2).c
 
 ### Client SANS tour de role 
 gcc -o -lpthread client(4ou5) client(4ou5).c
-./client4 ton-adresse-ip le-port-du-serveur
-./client5 ton-adresse-ip le-port-du-serveur
+#./client4 ton-adresse-ip le-port-du-serveur
+#./client5 ton-adresse-ip le-port-du-serveur
 
 
 ### serveur 
