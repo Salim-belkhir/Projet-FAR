@@ -66,9 +66,7 @@ void * Relayer2()
     char messageEnvoi[longueurMessage];
     char messageRecu[longueurMessage];
     int ecrits, lus; 
-
-    memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
-    memset(messageRecu, 0x00, longueurMessage*sizeof(char));
+    
     // On réception les données du client (cf. protocole)
     while(1)
     {
