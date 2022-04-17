@@ -10,6 +10,8 @@
 
 #define longueurMessage 256
 
+
+//fonction qui va servir au thread pour l'envoi de messages
 void * Envoyer(void * socketClient)
 {
     int ecrits;
@@ -33,7 +35,7 @@ void * Envoyer(void * socketClient)
                 close(socket);
                 exit(-3);
             case 0:
-                fprintf(stderr, "La socket a été fermée par le serveur !\n\n");
+                fprintf(stderr, "[-]La socket a été fermée par le serveur !\n\n");
                 close(socket);
                 exit(-4);
             default:
@@ -43,6 +45,8 @@ void * Envoyer(void * socketClient)
     pthread_exit(0);
 }
 
+
+//fonction qui va servir au thread 
 void * Recevoir(void * socketClient)
 {
     // Reception des données du serveur
@@ -62,12 +66,12 @@ void * Recevoir(void * socketClient)
                 close(socket);
                 exit(-4);
             case 0:
-                fprintf(stderr, "La socket a été fermée par le serveur !\n\n");
+                fprintf(stderr, "[-]La socket a été fermée par le serveur !\n\n");
                 close(socket);
                 return 0;
             default:
                 //puts(messageRecu);
-                printf("\nMessage recu du serveur → ");
+                printf("\nMessage recu de l'autre Client → ");
                 puts(messageRecu);
 
                 // On a fini d'afficher le message recu on affiche la demande d'envoie
