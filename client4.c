@@ -35,9 +35,9 @@ void * Envoyer(void * socketClient)
                 close(socket);
                 exit(-3);
             case 0:
-                fprintf(stderr, "[-]La socket a été fermée par le serveur !\n\n");
+                fprintf(stderr, "\n[-]La socket a été fermée par le serveur !\n");
                 close(socket);
-                exit(-4);
+                exit(-5);
             default:
                 printf("Message %s envoyé avec succés (%d octets)\n",messageEnvoi,ecrits);
         }
@@ -66,9 +66,9 @@ void * Recevoir(void * socketClient)
                 close(socket);
                 exit(-4);
             case 0:
-                fprintf(stderr, "[-]La socket a été fermée par le serveur !\n\n");
+                fprintf(stderr, "\n[-]La socket a été fermée par le serveur !\n");
                 close(socket);
-                return 0;
+                exit(-5);
             default:
                 //puts(messageRecu);
                 printf("\nMessage recu de l'autre Client → ");

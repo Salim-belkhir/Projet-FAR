@@ -10,24 +10,33 @@
 
 #define longueurMessage 256
 
-//tableau contenant les deux clients
+//tableau contenant les socket des deux clients à relayer 
+// si socket == -1 → pas connecté
 int connec[2] = {-1,-1};
 
+// pour continuer la communication
+int continuer = 1;
 
 //fonction qui va être utilisée par un thread du serveur pour 
 //pouvoir transmettre les messages du client 1 au client 2
-void * Relayer1()
+void * Relayer(void * tour)
 {   //on ecrase d'abord les données contenues dans messageEnvoi et messageRecu pour éviter d'avoir des données non désirables
+    int sendToclient = (long) tour;
     char messageEnvoi[longueurMessage];
     char messageRecu[longueurMessage];
-    int ecrits, lus; 
+    int ecrits, lus;
+    if(sendToclient == 0 ){
+        sendToclient ++;
+    } else sendToclient --;
+
     // On réceptionne les données du client (cf. protocole)
-    while(1)
+    while(continuer == 1)
     {
         memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
         memset(messageRecu, 0x00, longueurMessage*sizeof(char));
         //On lit le message envoyé par le client
-        lus = read(connec[0],messageRecu,longueurMessage*sizeof(char));
+        lus = read(connec[(long) tour],messageRecu,longueurMessage*sizeof(char));
+    
         switch(lus)
         {   //en cas d'erreur dans la lecture, -1 sera retourné par "lus"
             case -1: 
@@ -43,80 +52,37 @@ void * Relayer1()
                 printf("Message receive by the client : %s (%d octets)\n\n",messageRecu,lus);
         }
 
-        //On envoie des données vers le client (cf. protocole)    
-        sprintf(messageEnvoi,messageRecu);
-        ecrits = write(connec[1], messageEnvoi,strlen(messageEnvoi));
-        switch(ecrits)
+        if( strcmp(messageRecu, "fin") != 0)
         {
-            case -1: 
-                perror("[-]Problem of send the message");
-                close(connec[0]);
-                close(connec[1]);
-                exit(-6);
-            case 0:
-                fprintf(stderr, "[!]The socket was closed by the client !\n\n");
-                close(connec[0]);
-                close(connec[1]);
-            default:
-                printf("Message %s envoyé avec succés (%d octets)\n\n",messageEnvoi,ecrits);
+        //On envoie des données vers le client (cf. protocole)   
+            strcpy(messageEnvoi,messageRecu);
+            ecrits = write(connec[sendToclient], messageEnvoi,strlen(messageEnvoi));
+            switch(ecrits)
+            {
+                case -1: 
+                    perror("[-]Problem of send the message");
+                    close(connec[0]);
+                    close(connec[1]);
+                    exit(-6);
+                case 0:
+                    fprintf(stderr, "[!]The socket was closed by the client !\n\n");
+                    close(connec[0]);
+                    close(connec[1]);
+                default:
+                    printf("Message %s envoyé avec succés (%d octets)\n\n",messageEnvoi,ecrits);
+            }
+        } else {
+            continuer = 0;
         }
     }
+    connec[0] = -1;
+    connec[1] = -1;
+    close(connec[0]);
+    close(connec[1]);
+    pthread_exit(0);    
 }
 
-
-//fonction qui va être utilisée par un thread du serveur pour 
-//pouvoir transmettre les messages du client 2 au client 1 cette fois-ci
-void * Relayer2()
-{
-    char messageEnvoi[longueurMessage];
-    char messageRecu[longueurMessage];
-    int ecrits, lus; 
-    
-    // On réceptionne les données du client (cf. protocole)
-    while(1)
-    {   //on ecrase d'abord les données contenues dans messageEnvoi et messageRecu pour éviter d'avoir des données non désirables
-        memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
-        memset(messageRecu, 0x00, longueurMessage*sizeof(char));
-        //On lit le message envoyé par le client
-        lus = read(connec[1],messageRecu,longueurMessage*sizeof(char));
-        switch(lus)
-        {
-            //en cas d'erreur dans la lecture, -1 sera retourné par "lus"
-            case -1: 
-                perror("[-]Problem receiving the message");
-                close(connec[0]);
-                close(connec[1]);
-                exit(-5);
-            case 0:
-                fprintf(stderr, "[!]The socket was closed by the client !\n\n");
-                close(connec[0]);
-                close(connec[1]);
-            default:
-                printf("Message recu du client : %s (%d octets)\n\n",messageRecu,lus);
-        }
-
-        //On envoie des données vers le client (cf. protocole)    
-        sprintf(messageEnvoi,messageRecu);
-
-        ecrits = write(connec[0], messageEnvoi,strlen(messageEnvoi));
-        switch(ecrits)
-        {
-            case -1: 
-                perror("write");
-                close(connec[0]);
-                close(connec[1]);
-                exit(-6);
-            case 0:
-                fprintf(stderr, "[!]The socket was closed by the client !\n\n");
-                close(connec[0]);
-                close(connec[1]);
-            default:
-                printf("Message %s envoyé avec succés (%d octets)\n\n",messageEnvoi,ecrits);
-        }
-    }
-}
-
-int main(int argc, char *argv[]) 
+int main(int argc, char * argv[]) 
 {
     int socketServeur;
     struct sockaddr_in pointDeRencontreLocal;
@@ -196,16 +162,17 @@ int main(int argc, char *argv[])
                 close(socketServeur);
                 exit(-4);
             }
-            printf("%d\n", socketDialogue);
+
             connec[i] = socketDialogue;
             i++; 
         }
         //une fois qu'on a réussi à connecter les deux clients, on lance les deux threads qui vont relayer les messages
-        pthread_create(&tRelay1, NULL, Relayer1, NULL); 
-        pthread_create(&tRelay2, NULL, Relayer2, NULL);
+        long client1 = 0;
+        long client2 = 1;
+        pthread_create(&tRelay1, NULL, Relayer, (void *) client1); 
+        pthread_create(&tRelay2, NULL, Relayer, (void *) client2);
         pthread_join(tRelay1, NULL);    
         pthread_join(tRelay2, NULL);
-
     }
     close(socketServeur);
     return 0;
