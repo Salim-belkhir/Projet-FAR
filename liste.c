@@ -8,7 +8,7 @@ liste * cree_liste()
     liste * Liste = malloc(sizeof(*Liste));
     Element *element = malloc(sizeof(*element));
 
-
+    // ALLOCATION ECHOUE
     if (Liste == NULL || element == NULL)
     {
         exit(EXIT_FAILURE);
@@ -18,9 +18,8 @@ liste * cree_liste()
     element->suivant = NULL;
     element -> precedent = NULL;
     element -> chaine = (char*)(malloc(sizeof(char)));
-    element -> chaine = "oran";
+    element -> chaine = "Ayoub";
     Liste->premier = element;
-    
     return Liste;
 }
 
@@ -132,43 +131,26 @@ Element * afficherListe(liste *liste, Element * selectionne)
     return select;
 }
 
+int Taille(liste *liste)
+{
+
+    if (liste == NULL)
+    {
+        exit(EXIT_FAILURE);
+    }
+
+    Element *actuel = liste->premier;
+    int taille = 0;
+    while (actuel->suivant != NULL)
+    {
+        taille ++;
+        actuel = actuel->suivant;
+    }
+    return taille;
+}
+
+
 //fonction qui premet de récuperer l'élément à un certain indice 
-int map(int n, int (*f) (int))
-{
-    return f(n);
-}
-
-//fonction double un élément de la liste passé en paramètre 
-int doubler(int n)
-{
-    return n*2;
-}
-
-//fonction qui divise un élément par 2 passé en paramètre 
-int div2(int n)
-{
-    return (int) n/2;
-}
-
-
-void dbl(liste * l , int (*f) (int))
-{
-    dbl_recur(l->premier, f);
-}
-
-//parcours de toute la liste afin de doubler tous les éléments de la liste 
-void dbl_recur(Element * element, int (*f) (int))
-{
-    if(element -> suivant -> suivant == NULL)
-    {
-        element-> nombre = map(element->nombre, f); 
-    }
-    else
-    {
-        element-> nombre = map(element->nombre, f);
-        dbl_recur(element -> suivant, f);
-    }
-}
 
 //foncton qui retourne l'élément suivant, si il y'en a pas, return l'élément 
 Element * itemSuivant(Element * l)
@@ -202,10 +184,11 @@ void Options_Liste()
 	printf(" Les choix Possibles :\n");
     printf(" Choix 1 : Sélectionner item suivant\n");
     printf(" Choix 2 : Sélectionner item précédent\n");
-    printf(" Choix 3 : Afficher la valeur du maillon séléctionné\n");
+    printf(" Choix 3 : Afficher la valeur du socket du client séléctionné\n");
     printf(" Choix 4 : 'Quitter'\n\n");
 }
 
+/*
 int main(int argc, char const *argv[])
 {
     
@@ -236,10 +219,6 @@ int main(int argc, char const *argv[])
         printf("la liste contient au moin  un element \n");
     }
 
-    /*
-    int (*pointeur_doubler) (int) = doubler; // ou bien div2
-    dbl(l, pointeur_doubler);
-    */ 
     printf(" Bonjour, ceci est une liste doublement chainé à 4 éléments \n");
     
     system("clear");
@@ -285,3 +264,4 @@ int main(int argc, char const *argv[])
     }
     return 0;
 }
+*/

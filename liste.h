@@ -1,4 +1,5 @@
 typedef struct Element Element;
+
 struct Element
 {
     int nombre;
@@ -8,7 +9,6 @@ struct Element
 };
 
 typedef struct liste liste;
-
 struct liste
 {
     Element * premier;
@@ -30,15 +30,12 @@ void supprimer_fin(liste * l);
 
 void supprimer_fin_recur(Element *element);
 
+int Taille(liste *liste);
+
 Element *  afficherListe(liste * l,Element * selectionne);
 
-
-
-int map(int n, int (*f) (int));
-int doubler(int n);
-int div2(int n);
-void dbl(liste * l , int (*f) (int));
-void dbl_recur(Element * element, int (*f) (int));
 Element * itemSuivant(Element * l);
+
 Element * itemPrecedent(Element * l);
+
 void Options_Liste();

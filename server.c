@@ -9,23 +9,25 @@
 #include <unistd.h>
 #include "liste.h"
 
-
-
 #define longueurMessage 256
 
-//tableau contenant les socket des deux clients à relayer 
+//liste contenant les socket des  clients à relayer 
 // si socket == -1 → pas connecté
-int * connecter;
+liste * utilisateurConnecter;
 int nombreClientConnecter;
 
 // fermer toutes les sockets des clients connectés
-void closeAllsockets( int * tab, int taille)
+void closeAllsockets(liste * liste)
 {
-    int i;
-    for(i = 0; i < taille; i++)
+    if (liste == NULL)
     {
-        close(tab[i]);
-        tab[i] = -1;
+        exit(EXIT_FAILURE);
+    }
+    Element *actuel = liste->premier;
+    while (actuel->suivant != NULL)
+    {
+        close(actuel->nombre);
+        actuel = actuel->suivant;
     }
 }
 
@@ -50,39 +52,41 @@ void * Relayer(void * SocketClient)
         {   //en cas d'erreur dans la lecture, -1 sera retourné par "lus"
             case -1: 
                 perror("[-]Problem receiving the message");               
-                closeAllsockets(connecter , nombreClientConnecter);
+                closeAllsockets(utilisateurConnecter);
                 exit(-5);
             case 0:
                 fprintf(stderr, "[!]The socket was closed by the client !\n\n");
-                closeAllsockets(connecter , nombreClientConnecter);
+                closeAllsockets(utilisateurConnecter);
             default:
                 printf("Message receive by the client : %s (%d octets)\n\n",messageRecu,lus);
         }
 
         //On envoie des données vers le client (cf. protocole)   
-        strcpy(messageEnvoi,messageRecu);
-        int i;
-        for(i = 0; i < nombreClientConnecter; i++)
+        strcpy(messageEnvoi,messageRecu);    
+        Element * actuel = utilisateurConnecter->premier;
+        while(actuel -> suivant != NULL)
         {
-            if(socketClient != connecter[i])
+            if(socketClient != actuel -> nombre)
             {
-                ecrits = write(connecter[i], messageEnvoi,strlen(messageEnvoi));
+                ecrits = write(actuel -> nombre, messageEnvoi,strlen(messageEnvoi));
                 switch(ecrits)
                 {
                     case -1: 
                         perror("[-]Problem of send the message");
-                        closeAllsockets(connecter , nombreClientConnecter);
+                        closeAllsockets(utilisateurConnecter);
                         exit(-6);
                     case 0:
                         fprintf(stderr, "[!]The socket was closed by the client !\n\n");
-                        closeAllsockets(connecter , nombreClientConnecter);
+                        closeAllsockets(utilisateurConnecter);
                     default:
                         printf("Message %s envoyé avec succés (%d octets)\n\n",messageEnvoi,ecrits);
                 }
             }
+            actuel = actuel->suivant;
         }
+                
     }
-    closeAllsockets(connecter , nombreClientConnecter);
+    closeAllsockets(utilisateurConnecter);
     pthread_exit(0);    
 }
 
@@ -98,7 +102,7 @@ int main(int argc, char * argv[])
     struct sockaddr_in pointDeRencontreDistant;
     int retour;
 
-    connecter = malloc(10 * sizeof(int));
+    utilisateurConnecter = cree_liste();
 
     //  Creation des threads pour envoyer et recevoir des messages 
     pthread_t tRelay;
@@ -151,7 +155,6 @@ int main(int argc, char * argv[])
     }
 
     printf("Server on listening! \n");
-    nombreClientConnecter = 0;
     while(1){
         printf("nombre de client connecté %d\n", nombreClientConnecter);  
         //Boucle d'attente de connexion: en théorie, un serveur attend indéfiniment
@@ -168,11 +171,13 @@ int main(int argc, char * argv[])
             close(socketServeur);
             exit(-4);
         }
-        
-        connecter[nombreClientConnecter] = socketDialogue;  
+        printf("on ajoute : %d a la file\n", socketDialogue);
+        if(nombreClientConnecter == 0) ajouter_debut(utilisateurConnecter, socketDialogue, "Ayoub");
+        else ajouter_fin(utilisateurConnecter, socketDialogue, "Ayoub");
+        printf("taille : %d \n",Taille(utilisateurConnecter));  
         //une fois qu'on a réussi à connecter le client, on lance le thread qui va relayer les messages
-        pthread_create(&tRelay, NULL, Relayer, (void *)(long) socketDialogue);   
-        nombreClientConnecter++;    
+        pthread_create(&tRelay, NULL, Relayer, (void *)(long) socketDialogue);
+        nombreClientConnecter = Taille(utilisateurConnecter);       
     }
     
     close(socketServeur);
