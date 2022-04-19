@@ -15,6 +15,7 @@
 // si socket == -1 → pas connecté
 liste * utilisateurConnecter;
 int nombreClientConnecter;
+pthread_mutex_t mutex;
 
 // fermer toutes les sockets des clients connectés
 void closeAllsockets(liste * liste)
@@ -63,6 +64,8 @@ void * Relayer(void * SocketClient)
 
         //On envoie des données vers le client (cf. protocole)   
         strcpy(messageEnvoi,messageRecu);    
+        
+        pthread_mutex_lock(&mutex);
         Element * actuel = utilisateurConnecter->premier;
         while(actuel -> suivant != NULL)
         {
@@ -84,6 +87,7 @@ void * Relayer(void * SocketClient)
             }
             actuel = actuel->suivant;
         }
+        pthread_mutex_unlock(&mutex);
                 
     }
     closeAllsockets(utilisateurConnecter);
@@ -103,7 +107,7 @@ int main(int argc, char * argv[])
     int retour;
 
     utilisateurConnecter = cree_liste();
-
+    pthread_mutex_init(&mutex, NULL);
     //  Creation des threads pour envoyer et recevoir des messages 
     pthread_t tRelay;
 
@@ -153,15 +157,14 @@ int main(int argc, char * argv[])
         perror("[-]The server can not listen");
         exit(-3);
     }
-
-    printf("Server on listening! \n");
+    
     while(1){
+        printf("Server on listening! \n");
         printf("nombre de client connecté %d\n", nombreClientConnecter);  
         //Boucle d'attente de connexion: en théorie, un serveur attend indéfiniment
         //Dans un premier temps, il faut s'assurer qu'on a bien deux clients qui vont se connecter
         //on va d'abord rester dans cette boucle, tant que deux clients ne se sont pas bien connectés
         printf("Attente d'une demande de connexion (quitter avec Ctrl-C) \n\n");
-        
         // c'est un appel bloquant 
         socketDialogue = accept(socketServeur, (struct sockaddr *)&pointDeRencontreDistant, &longueurAdresse);
         if(socketDialogue < 0)
