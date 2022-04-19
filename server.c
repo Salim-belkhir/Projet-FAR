@@ -7,94 +7,101 @@
 #include <arpa/inet.h> /* pour htons et inet_aton */
 #include <pthread.h>
 #include <unistd.h>
+#include "liste.h"
+
+
 
 #define longueurMessage 256
 
 //tableau contenant les socket des deux clients à relayer 
 // si socket == -1 → pas connecté
-int connec[2] = {-1,-1};
+int * connecter;
+int nombreClientConnecter;
 
-// pour continuer la communication
-int continuer = 1;
+// fermer toutes les sockets des clients connectés
+void closeAllsockets( int * tab, int taille)
+{
+    int i;
+    for(i = 0; i < taille; i++)
+    {
+        close(tab[i]);
+        tab[i] = -1;
+    }
+}
+
 
 //fonction qui va être utilisée par un thread du serveur pour 
 //pouvoir transmettre les messages du client 1 au client 2
-void * Relayer(void * tour)
+void * Relayer(void * SocketClient)
 {   //on ecrase d'abord les données contenues dans messageEnvoi et messageRecu pour éviter d'avoir des données non désirables
-    int sendToclient = (long) tour;
+    int socketClient = (long) SocketClient;
     char messageEnvoi[longueurMessage];
     char messageRecu[longueurMessage];
     int ecrits, lus;
-    if(sendToclient == 0 ){
-        sendToclient ++;
-    } else sendToclient --;
-
+    
     // On réceptionne les données du client (cf. protocole)
-    while(continuer == 1)
+    while(1)
     {
         memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
         memset(messageRecu, 0x00, longueurMessage*sizeof(char));
         //On lit le message envoyé par le client
-        lus = read(connec[(long) tour],messageRecu,longueurMessage*sizeof(char));
-    
+        lus = read(socketClient,messageRecu,longueurMessage*sizeof(char));    
         switch(lus)
         {   //en cas d'erreur dans la lecture, -1 sera retourné par "lus"
             case -1: 
                 perror("[-]Problem receiving the message");               
-                close(connec[0]);
-                close(connec[1]);
+                closeAllsockets(connecter , nombreClientConnecter);
                 exit(-5);
             case 0:
                 fprintf(stderr, "[!]The socket was closed by the client !\n\n");
-                close(connec[0]);
-                close(connec[1]);
+                closeAllsockets(connecter , nombreClientConnecter);
             default:
                 printf("Message receive by the client : %s (%d octets)\n\n",messageRecu,lus);
         }
 
-        if( strcmp(messageRecu, "fin") != 0)
-        {
         //On envoie des données vers le client (cf. protocole)   
-            strcpy(messageEnvoi,messageRecu);
-            ecrits = write(connec[sendToclient], messageEnvoi,strlen(messageEnvoi));
-            switch(ecrits)
+        strcpy(messageEnvoi,messageRecu);
+        int i;
+        for(i = 0; i < nombreClientConnecter; i++)
+        {
+            if(socketClient != connecter[i])
             {
-                case -1: 
-                    perror("[-]Problem of send the message");
-                    close(connec[0]);
-                    close(connec[1]);
-                    exit(-6);
-                case 0:
-                    fprintf(stderr, "[!]The socket was closed by the client !\n\n");
-                    close(connec[0]);
-                    close(connec[1]);
-                default:
-                    printf("Message %s envoyé avec succés (%d octets)\n\n",messageEnvoi,ecrits);
+                ecrits = write(connecter[i], messageEnvoi,strlen(messageEnvoi));
+                switch(ecrits)
+                {
+                    case -1: 
+                        perror("[-]Problem of send the message");
+                        closeAllsockets(connecter , nombreClientConnecter);
+                        exit(-6);
+                    case 0:
+                        fprintf(stderr, "[!]The socket was closed by the client !\n\n");
+                        closeAllsockets(connecter , nombreClientConnecter);
+                    default:
+                        printf("Message %s envoyé avec succés (%d octets)\n\n",messageEnvoi,ecrits);
+                }
             }
-        } else {
-            continuer = 0;
         }
     }
-    connec[0] = -1;
-    connec[1] = -1;
-    close(connec[0]);
-    close(connec[1]);
+    closeAllsockets(connecter , nombreClientConnecter);
     pthread_exit(0);    
 }
 
 int main(int argc, char * argv[]) 
 {
+
     int socketServeur;
     struct sockaddr_in pointDeRencontreLocal;
     socklen_t longueurAdresse;
+
 
     int socketDialogue;
     struct sockaddr_in pointDeRencontreDistant;
     int retour;
 
+    connecter = malloc(10 * sizeof(int));
+
     //  Creation des threads pour envoyer et recevoir des messages 
-    pthread_t tRelay1;
-    pthread_t tRelay2;
+    pthread_t tRelay;
 
 
     // Création d'un socket de communication
@@ -144,36 +151,30 @@ int main(int argc, char * argv[])
     }
 
     printf("Server on listening! \n");
-    int i ;
+    nombreClientConnecter = 0;
     while(1){
+        printf("nombre de client connecté %d\n", nombreClientConnecter);  
         //Boucle d'attente de connexion: en théorie, un serveur attend indéfiniment
-        i = 0;
-        while( i < 2)
+        //Dans un premier temps, il faut s'assurer qu'on a bien deux clients qui vont se connecter
+        //on va d'abord rester dans cette boucle, tant que deux clients ne se sont pas bien connectés
+        printf("Attente d'une demande de connexion (quitter avec Ctrl-C) \n\n");
+        
+        // c'est un appel bloquant 
+        socketDialogue = accept(socketServeur, (struct sockaddr *)&pointDeRencontreDistant, &longueurAdresse);
+        if(socketDialogue < 0)
         {
-            //Dans un premier temps, il faut s'assurer qu'on a bien deux clients qui vont se connecter
-            //on va d'abord rester dans cette boucle, tant que deux clients ne se sont pas bien connectés
-            printf("Attente d'une demande de connexion (quitter avec Ctrl-C) \n\n");
-            // c'est un appel bloquant 
-            socketDialogue = accept(socketServeur, (struct sockaddr *)&pointDeRencontreDistant, &longueurAdresse);
-            if(socketDialogue < 0)
-            {
-                perror("[-]We can not connect the client");
-                close(socketDialogue);
-                close(socketServeur);
-                exit(-4);
-            }
-
-            connec[i] = socketDialogue;
-            i++; 
+            perror("[-]We can not connect the client");
+            close(socketDialogue);
+            close(socketServeur);
+            exit(-4);
         }
-        //une fois qu'on a réussi à connecter les deux clients, on lance les deux threads qui vont relayer les messages
-        long client1 = 0;
-        long client2 = 1;
-        pthread_create(&tRelay1, NULL, Relayer, (void *) client1); 
-        pthread_create(&tRelay2, NULL, Relayer, (void *) client2);
-        pthread_join(tRelay1, NULL);    
-        pthread_join(tRelay2, NULL);
+        
+        connecter[nombreClientConnecter] = socketDialogue;  
+        //une fois qu'on a réussi à connecter le client, on lance le thread qui va relayer les messages
+        pthread_create(&tRelay, NULL, Relayer, (void *)(long) socketDialogue);   
+        nombreClientConnecter++;    
     }
+    
     close(socketServeur);
     return 0;
 }
