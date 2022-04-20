@@ -33,6 +33,40 @@ void closeAllsockets(liste * liste)
 }
 
 
+//fonction d'extraction 
+char * extraire(char * message){
+    int pasFini = 1;
+    int i = 0;
+    char * msg = malloc(25*sizeof(char));
+    while(pasFini){
+        if(message[i] == ' ' ){
+            pasFini = 0;
+        }
+        else{
+            msg[i] = message[i];
+            i++;
+        }
+    }
+    return msg;
+}
+
+
+//fonction pour pouvoir récupérer une chaîne de charactères
+char * get(char * message, int deb, int fin){
+    char * msg = (char*) malloc((fin - deb + 1)*sizeof(char));
+    int taille = strlen(message);
+    if(fin > taille){
+        perror("[!] L'indice de fin n'est pas valable, la chaîne de caractères est plus vide que ça");
+        exit(-1);
+    }
+    int i = 0;
+    for(deb ; deb <= fin; deb++){
+        msg[i] = message[deb];
+        i++;
+    }
+    return msg;
+}
+
 //fonction qui va être utilisée par un thread du serveur pour 
 //pouvoir transmettre les messages du client 1 au client 2
 void * Relayer(void * SocketClient)
@@ -61,6 +95,36 @@ void * Relayer(void * SocketClient)
             default:
                 printf("Message receive by the client : %s (%d octets)\n\n",messageRecu,lus);
         }
+
+        
+        
+        //verification de si c'est un message spécial
+        if(strcmp(get(messageRecu, 0, 3), "/fin") == 0){
+            //close(socket);
+            //close(socketServeur);
+            printf("La discussion est finie\n");
+            break;
+        }
+        else{
+            if(messageRecu[0] == '@'){
+                    //pour envoyer un message directement à quelqu'un
+                    char * destinataire = extraire(get(messageRecu, 1, strlen(messageRecu)-1));
+                    //on réutilise son nom pour parcourir la liste  
+                    printf("destinataire saisi : %s\n", destinataire);
+                    break;
+            }
+            else{
+                if(messageRecu[0] == '!'){
+                    //pour envoyer un message urgent à quelqu'un
+                    char * destinataire = extraire(get(messageRecu, 1, strlen(messageRecu)-1));
+                    //on réutilise son nom pour parcourir la liste et le retrouver 
+                    printf("destinataire saisi : %s\n", destinataire);
+                    break;
+                }
+            }
+        } 
+
+        //------------------------//
 
         //On envoie des données vers le client (cf. protocole)   
         strcpy(messageEnvoi,messageRecu);    

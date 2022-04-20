@@ -7,19 +7,46 @@
 #include <arpa/inet.h> /* pour htons et inet_aton */
 #include <pthread.h>
 #include <unistd.h>
+#include "liste.h"
 
 #define longueurMessage 256
 
-//tableau contenant les socket des deux clients à relayer 
-// si socket == -1 → pas connecté
-int connec[2] = {-1,-1};
+struct message_envoi{
+    char* desti;
+    char* message;
+};
 
-// pour continuer la communication
-int continuer = 1;
+//liste contenant les socket des  clients à relayer 
+// si socket == -1 → pas connecté
+liste * utilisateurConnecter;
+int nombreClientConnecter;
+pthread_mutex_t mutex;
+
+int envoiMessage(struct message_envoi msg){
+    char * destinataire = msg.desti;
+    liste * li = utilisateurConnecter;
+    if(liste_est_vide(li) || liste_est_vide()){
+        perror("[!]il n'y a pas encore de personne connectée")
+    }
+}
+
+// fermer toutes les sockets des clients connectés
+void closeAllsockets(liste * liste)
+{
+    if (liste == NULL)
+    {
+        exit(EXIT_FAILURE);
+    }
+    Element *actuel = liste->premier;
+    while (actuel->suivant != NULL)
+    {
+        close(actuel->nombre);
+        actuel = actuel->suivant;
+    }
+}
 
 
 //fonction d'extraction 
-
 char * extraire(char * message){
     int pasFini = 1;
     int i = 0;
@@ -38,7 +65,6 @@ char * extraire(char * message){
 
 
 //fonction pour pouvoir récupérer une chaîne de charactères
-
 char * get(char * message, int deb, int fin){
     char * msg = (char*) malloc((fin - deb + 1)*sizeof(char));
     int taille = strlen(message);
@@ -54,44 +80,38 @@ char * get(char * message, int deb, int fin){
     return msg;
 }
 
-
 //fonction qui va être utilisée par un thread du serveur pour 
 //pouvoir transmettre les messages du client 1 au client 2
-void * Relayer(void * tour)
+void * Relayer(void * SocketClient)
 {   //on ecrase d'abord les données contenues dans messageEnvoi et messageRecu pour éviter d'avoir des données non désirables
-    int sendToclient = (long) tour;
+    int socketClient = (long) SocketClient;
     char messageEnvoi[longueurMessage];
     char messageRecu[longueurMessage];
     int ecrits, lus;
-    if(sendToclient == 0 ){
-        sendToclient ++;
-    } else sendToclient --;
-
+    
     // On réceptionne les données du client (cf. protocole)
-    while(continuer == 1)
+    while(1)
     {
         memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
         memset(messageRecu, 0x00, longueurMessage*sizeof(char));
         //On lit le message envoyé par le client
-        lus = read(connec[(long) tour],messageRecu,longueurMessage*sizeof(char));
-    
+        lus = read(socketClient,messageRecu,longueurMessage*sizeof(char));    
         switch(lus)
         {   //en cas d'erreur dans la lecture, -1 sera retourné par "lus"
             case -1: 
                 perror("[-]Problem receiving the message");               
-                close(connec[0]);
-                close(connec[1]);
+                closeAllsockets(utilisateurConnecter);
                 exit(-5);
             case 0:
                 fprintf(stderr, "[!]The socket was closed by the client !\n\n");
-                close(connec[0]);
-                close(connec[1]);
+                closeAllsockets(utilisateurConnecter);
             default:
                 printf("Message receive by the client : %s (%d octets)\n\n",messageRecu,lus);
         }
 
-        //verification de si c'est un message spécial
         
+        
+        //verification de si c'est un message spécial
         if(strcmp(get(messageRecu, 0, 3), "/fin") == 0){
             //close(socket);
             //close(socketServeur);
@@ -116,55 +136,57 @@ void * Relayer(void * tour)
                 }
             }
         } 
-                
-        
-        
 
-        
+        //------------------------//
 
-        if( strcmp(messageRecu, "fin") != 0)
-        {
         //On envoie des données vers le client (cf. protocole)   
-            strcpy(messageEnvoi,messageRecu);
-            ecrits = write(connec[sendToclient], messageEnvoi,strlen(messageEnvoi));
-            switch(ecrits)
+        strcpy(messageEnvoi,messageRecu);    
+        
+        pthread_mutex_lock(&mutex);
+        Element * actuel = utilisateurConnecter->premier;
+        while(actuel -> suivant != NULL)
+        {
+            if(socketClient != actuel -> nombre)
             {
-                case -1: 
-                    perror("[-]Problem of send the message");
-                    close(connec[0]);
-                    close(connec[1]);
-                    exit(-6);
-                case 0:
-                    fprintf(stderr, "[!]The socket was closed by the client !\n\n");
-                    close(connec[0]);
-                    close(connec[1]);
-                default:
-                    printf("Message %s envoyé avec succés (%d octets)\n\n",messageEnvoi,ecrits);
+                ecrits = write(actuel -> nombre, messageEnvoi,strlen(messageEnvoi));
+                switch(ecrits)
+                {
+                    case -1: 
+                        perror("[-]Problem of send the message");
+                        closeAllsockets(utilisateurConnecter);
+                        exit(-6);
+                    case 0:
+                        fprintf(stderr, "[!]The socket was closed by the client !\n\n");
+                        closeAllsockets(utilisateurConnecter);
+                    default:
+                        printf("Message %s envoyé avec succés (%d octets)\n\n",messageEnvoi,ecrits);
+                }
             }
-        } else {
-            continuer = 0;
+            actuel = actuel->suivant;
         }
+        pthread_mutex_unlock(&mutex);
+                
     }
-    connec[0] = -1;
-    connec[1] = -1;
-    close(connec[0]);
-    close(connec[1]);
+    closeAllsockets(utilisateurConnecter);
     pthread_exit(0);    
 }
 
 int main(int argc, char * argv[]) 
 {
+
     int socketServeur;
     struct sockaddr_in pointDeRencontreLocal;
     socklen_t longueurAdresse;
+
 
     int socketDialogue;
     struct sockaddr_in pointDeRencontreDistant;
     int retour;
 
+    utilisateurConnecter = cree_liste();
+    pthread_mutex_init(&mutex, NULL);
     //  Creation des threads pour envoyer et recevoir des messages 
-    pthread_t tRelay1;
-    pthread_t tRelay2;
+    pthread_t tRelay;
 
 
     // Création d'un socket de communication
@@ -212,38 +234,32 @@ int main(int argc, char * argv[])
         perror("[-]The server can not listen");
         exit(-3);
     }
-
-    printf("Server on listening! \n");
-    int i ;
+    
     while(1){
+        printf("Server on listening! \n");
+        printf("nombre de client connecté %d\n", nombreClientConnecter);  
         //Boucle d'attente de connexion: en théorie, un serveur attend indéfiniment
-        i = 0;
-        while( i < 2)
+        //Dans un premier temps, il faut s'assurer qu'on a bien deux clients qui vont se connecter
+        //on va d'abord rester dans cette boucle, tant que deux clients ne se sont pas bien connectés
+        printf("Attente d'une demande de connexion (quitter avec Ctrl-C) \n\n");
+        // c'est un appel bloquant 
+        socketDialogue = accept(socketServeur, (struct sockaddr *)&pointDeRencontreDistant, &longueurAdresse);
+        if(socketDialogue < 0)
         {
-            //Dans un premier temps, il faut s'assurer qu'on a bien deux clients qui vont se connecter
-            //on va d'abord rester dans cette boucle, tant que deux clients ne se sont pas bien connectés
-            printf("Attente d'une demande de connexion (quitter avec Ctrl-C) \n\n");
-            // c'est un appel bloquant 
-            socketDialogue = accept(socketServeur, (struct sockaddr *)&pointDeRencontreDistant, &longueurAdresse);
-            if(socketDialogue < 0)
-            {
-                perror("[-]We can not connect the client");
-                close(socketDialogue);
-                close(socketServeur);
-                exit(-4);
-            }
-
-            connec[i] = socketDialogue;
-            i++; 
+            perror("[-]We can not connect the client");
+            close(socketDialogue);
+            close(socketServeur);
+            exit(-4);
         }
-        //une fois qu'on a réussi à connecter les deux clients, on lance les deux threads qui vont relayer les messages
-        long client1 = 0;
-        long client2 = 1;
-        pthread_create(&tRelay1, NULL, Relayer, (void *) client1); 
-        pthread_create(&tRelay2, NULL, Relayer, (void *) client2);
-        pthread_join(tRelay1, NULL);    
-        pthread_join(tRelay2, NULL);
+        printf("on ajoute : %d a la file\n", socketDialogue);
+        if(nombreClientConnecter == 0) ajouter_debut(utilisateurConnecter, socketDialogue, "Ayoub");
+        else ajouter_fin(utilisateurConnecter, socketDialogue, "Ayoub");
+        printf("taille : %d \n",Taille(utilisateurConnecter));  
+        //une fois qu'on a réussi à connecter le client, on lance le thread qui va relayer les messages
+        pthread_create(&tRelay, NULL, Relayer, (void *)(long) socketDialogue);
+        nombreClientConnecter = Taille(utilisateurConnecter);       
     }
+    
     close(socketServeur);
     return 0;
 }
