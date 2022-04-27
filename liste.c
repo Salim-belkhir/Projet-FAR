@@ -15,6 +15,7 @@ liste * cree_liste()
     }
 
     element->nombre = 0;
+    element-> id = 0;
     element->suivant = NULL;
     element -> precedent = NULL;
     element -> chaine = (char*)(malloc(sizeof(char)));
@@ -36,10 +37,11 @@ int liste_est_vide(liste * l)
 }
 
 //fonction qui ajoute l'élément passé en paramètre au début de la liste
-void ajouter_debut(liste * l, int val, char * chaine)
+void ajouter_debut(liste * l,int id, int val, char * chaine)
 {
     Element *element = malloc(sizeof(*element));
     element -> nombre = val;
+    element -> id = id;
     element -> chaine = chaine;    
     element -> precedent = NULL;
     element -> suivant = l -> premier;
@@ -59,19 +61,20 @@ void supprimer_debut(liste * l)
 
 
 //fonction qui ajoute l'élément passé en paramètre à la fin de la liste
-void ajouter_fin(liste * l, int val, char * chaine)
+void ajouter_fin(liste * l, int id,  int val, char * chaine)
 {   
-    ajouter_fin_recur(l -> premier, val, chaine);
+    ajouter_fin_recur(l -> premier, id, val, chaine);
 }
 
 //fonction auxiliaire de ajouter_fin qui parcourt la liste
-void ajouter_fin_recur(Element *element, int val, char * chaine)
+void ajouter_fin_recur(Element *element,int id, int val, char * chaine)
 {
     if (element -> suivant -> suivant == NULL)
     {
         Element * inserer = malloc(sizeof(*inserer));
         inserer -> suivant = element -> suivant;
         inserer-> precedent = element;
+        inserer -> id = id;
         inserer -> nombre = val;
         element->suivant->precedent = inserer;
         inserer -> chaine = chaine;
@@ -79,7 +82,7 @@ void ajouter_fin_recur(Element *element, int val, char * chaine)
     }
     else
     {
-        ajouter_fin_recur(element -> suivant, val,chaine);
+        ajouter_fin_recur(element -> suivant, id, val,chaine);
     }
 }
 

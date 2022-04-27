@@ -3,9 +3,10 @@ typedef struct Element Element;
 struct Element
 {
     int nombre;
+    int id;
     Element *suivant;
     Element * precedent;
-    char * chaine; 
+    char * chaine;
 };
 
 typedef struct liste liste;
@@ -18,13 +19,13 @@ liste * cree_liste();
 
 int liste_est_vide(liste * l);
 
-void ajouter_debut(liste * l, int val, char * chaine);
+void ajouter_debut(liste * l, int id, int val, char * chaine);
 
 void supprimer_debut(liste * l);
 
-void ajouter_fin(liste * l, int val, char * chaine);
+void ajouter_fin(liste * l, int id, int val, char * chaine);
 
-void ajouter_fin_recur(Element *element, int val, char * chaine);
+void ajouter_fin_recur(Element *element,int id,  int val, char * chaine);
 
 void supprimer_fin(liste * l);
 

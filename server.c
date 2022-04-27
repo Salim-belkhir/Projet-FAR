@@ -11,7 +11,7 @@
 
 #define longueurMessage 256
 
-//liste contenant les socket des  clients à relayer 
+// liste contenant les socket des  clients à relayer 
 // si socket == -1 → pas connecté
 liste * utilisateurConnecter;
 int nombreClientConnecter;
@@ -32,40 +32,105 @@ void closeAllsockets(liste * liste)
     }
 }
 
-
-//fonction d'extraction 
-char * extraire(char * message){
-    int pasFini = 1;
-    int i = 0;
-    char * msg = malloc(25*sizeof(char));
-    while(pasFini){
-        if(message[i] == ' ' ){
-            pasFini = 0;
-        }
-        else{
-            msg[i] = message[i];
-            i++;
-        }
-    }
-    return msg;
-}
-
-
 //fonction pour pouvoir récupérer une chaîne de charactères
-char * get(char * message, int deb, int fin){
-    char * msg = (char*) malloc((fin - deb + 1)*sizeof(char));
-    int taille = strlen(message);
-    if(fin > taille){
-        perror("[!] L'indice de fin n'est pas valable, la chaîne de caractères est plus vide que ça");
-        exit(-1);
+char ** Separation(char * message){
+    // Allocation de la memoire
+    char ** msg = malloc(longueurMessage*sizeof(char *));
+    int i;
+    for(i=0; i<3;i++)
+    {
+        msg[i] = malloc(longueurMessage*sizeof(char));
     }
-    int i = 0;
-    for(deb ; deb <= fin; deb++){
-        msg[i] = message[deb];
-        i++;
+
+    // le caractères spécial
+    msg[0][0] = message[0];
+    printf("le caractère est → %s \n", msg[0]);
+    
+    // Utilisateur qui recoie le message
+    int j = 1;
+    int k = 0;
+    while(message[j] != ' ')
+    {
+        msg[1][k] = message[j];
+        k++;
+        j++;    
     }
+    printf("l'utilisateur est → %s \n", msg[1]);
+    
+    // Message
+    // La définitions de séparateurs connus.
+    const char * separators = " ";
+    
+    // On cherche à récupérer, un à un, tous les mots (token) de la phrase
+    // et on commence par le premier.
+    char * strToken = malloc(longueurMessage*sizeof(char));
+    strToken = strtok ( message, separators );
+    
+    while ( strToken != NULL ) {
+        //printf (" → %s\n", strToken);
+        msg[2] = strToken;
+        // On demande le token suivant.
+        strToken = strtok( NULL, "");
+    }
+    
+    printf("le message est → %s \n", msg[2]);
+    //int taille = strlen(message);
+
     return msg;
 }
+
+void EnvoyerMessageSpe(int socketClient, char * Message, char * client)
+{
+    int ecrits;
+    Element * actuel = utilisateurConnecter->premier;
+    while(actuel -> suivant != NULL)
+    {
+        if(socketClient != actuel -> nombre && (strcmp(client, actuel -> chaine) == 0))
+        {
+            ecrits = write(actuel -> nombre, Message,strlen(Message));
+            switch(ecrits)
+            {
+                case -1: 
+                    perror("[-]Problem of send the message");
+                    closeAllsockets(utilisateurConnecter);
+                    exit(-6);
+                case 0:
+                    fprintf(stderr, "[!]The socket was closed by the client !\n\n");
+                    closeAllsockets(utilisateurConnecter);
+                default:
+                    printf("Message %s envoyé avec succés (%d octets)\n\n",Message,ecrits);
+            }
+        } 
+        actuel = actuel->suivant;
+    }
+}
+
+void EnvoyerMessage(int socketClient, char * Message)
+{
+    int ecrits;
+    Element * actuel = utilisateurConnecter->premier;
+    while(actuel -> suivant != NULL)
+    {
+        if(socketClient != actuel -> nombre)
+        {
+            ecrits = write(actuel -> nombre, Message,strlen(Message));
+            switch(ecrits)
+            {
+                case -1: 
+                    perror("[-]Problem of send the message");
+                    closeAllsockets(utilisateurConnecter);
+                    exit(-6);
+                case 0:
+                    fprintf(stderr, "[!]The socket was closed by the client !\n\n");
+                    closeAllsockets(utilisateurConnecter);
+                default:
+                    printf("Message %s envoyé avec succés (%d octets)\n\n",Message,ecrits);
+            }
+        } 
+        actuel = actuel->suivant;
+    }
+}
+
 
 //fonction qui va être utilisée par un thread du serveur pour 
 //pouvoir transmettre les messages du client 1 au client 2
@@ -74,7 +139,7 @@ void * Relayer(void * SocketClient)
     int socketClient = (long) SocketClient;
     char messageEnvoi[longueurMessage];
     char messageRecu[longueurMessage];
-    int ecrits, lus;
+    int lus;
     
     // On réceptionne les données du client (cf. protocole)
     while(1)
@@ -96,63 +161,36 @@ void * Relayer(void * SocketClient)
                 printf("Message receive by the client : %s (%d octets)\n\n",messageRecu,lus);
         }
 
-        
-        
-        //verification de si c'est un message spécial
-        if(strcmp(get(messageRecu, 0, 3), "/fin") == 0){
-            //close(socket);
-            //close(socketServeur);
+
+        // verification de si c'est un message spécial
+        // et l'envoie des données vers les clients (cf. protocole)   
+        char ** separation;
+        switch (messageRecu[0])
+        {
+        case '/':
+            /* la fin */
             printf("La discussion est finie\n");
             break;
+        case '@':
+            separation = Separation(messageRecu);
+            printf("le client %s\n",separation[1]);                
+            printf("le message %s\n", separation[2]);
+            strcpy(messageEnvoi, separation[2]);    
+            pthread_mutex_lock(&mutex);
+            EnvoyerMessageSpe(socketClient, messageEnvoi, separation[1]);        
+            pthread_mutex_unlock(&mutex);
+            break;
+        case '!':
+            /* Urgent */ 
+            break;
+        default:
+            strcpy(messageEnvoi,messageRecu);    
+            pthread_mutex_lock(&mutex);
+            EnvoyerMessage(socketClient, messageEnvoi);        
+            pthread_mutex_unlock(&mutex);
+            break;
         }
-        else{
-            if(messageRecu[0] == '@'){
-                    //pour envoyer un message directement à quelqu'un
-                    char * destinataire = extraire(get(messageRecu, 1, strlen(messageRecu)-1));
-                    //on réutilise son nom pour parcourir la liste  
-                    printf("destinataire saisi : %s\n", destinataire);
-                    break;
-            }
-            else{
-                if(messageRecu[0] == '!'){
-                    //pour envoyer un message urgent à quelqu'un
-                    char * destinataire = extraire(get(messageRecu, 1, strlen(messageRecu)-1));
-                    //on réutilise son nom pour parcourir la liste et le retrouver 
-                    printf("destinataire saisi : %s\n", destinataire);
-                    break;
-                }
-            }
-        } 
 
-        //------------------------//
-
-        //On envoie des données vers le client (cf. protocole)   
-        strcpy(messageEnvoi,messageRecu);    
-        
-        pthread_mutex_lock(&mutex);
-        Element * actuel = utilisateurConnecter->premier;
-        while(actuel -> suivant != NULL)
-        {
-            if(socketClient != actuel -> nombre)
-            {
-                ecrits = write(actuel -> nombre, messageEnvoi,strlen(messageEnvoi));
-                switch(ecrits)
-                {
-                    case -1: 
-                        perror("[-]Problem of send the message");
-                        closeAllsockets(utilisateurConnecter);
-                        exit(-6);
-                    case 0:
-                        fprintf(stderr, "[!]The socket was closed by the client !\n\n");
-                        closeAllsockets(utilisateurConnecter);
-                    default:
-                        printf("Message %s envoyé avec succés (%d octets)\n\n",messageEnvoi,ecrits);
-                }
-            }
-            actuel = actuel->suivant;
-        }
-        pthread_mutex_unlock(&mutex);
-                
     }
     closeAllsockets(utilisateurConnecter);
     pthread_exit(0);    
@@ -222,6 +260,7 @@ int main(int argc, char * argv[])
         exit(-3);
     }
     
+    int identifierClient = 0;
     while(1){
         printf("Server on listening! \n");
         printf("nombre de client connecté %d\n", nombreClientConnecter);  
@@ -239,12 +278,15 @@ int main(int argc, char * argv[])
             exit(-4);
         }
         printf("on ajoute : %d a la file\n", socketDialogue);
-        if(nombreClientConnecter == 0) ajouter_debut(utilisateurConnecter, socketDialogue, "Ayoub");
-        else ajouter_fin(utilisateurConnecter, socketDialogue, "Ayoub");
+        if(nombreClientConnecter == 0) ajouter_debut(utilisateurConnecter, identifierClient, socketDialogue, "Ayoub");
+        else ajouter_fin(utilisateurConnecter,identifierClient, socketDialogue, "Ayoub");
         printf("taille : %d \n",Taille(utilisateurConnecter));  
         //une fois qu'on a réussi à connecter le client, on lance le thread qui va relayer les messages
         pthread_create(&tRelay, NULL, Relayer, (void *)(long) socketDialogue);
         nombreClientConnecter = Taille(utilisateurConnecter);       
+        
+        // chaque client à son propre identifiant 
+        identifierClient ++;
     }
     
     close(socketServeur);

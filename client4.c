@@ -11,6 +11,8 @@
 #define longueurMessage 256
 
 
+
+
 //fonction qui va servir au thread pour l'envoi de messages
 void * Envoyer(void * socketClient)
 {
@@ -22,6 +24,29 @@ void * Envoyer(void * socketClient)
     //sprintf(messageEnvoi, "Holla");
     while(1)
     {
+        /*
+            memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
+            puts("\n↔↔↔ Choisissez un identifiant ↔↔↔");
+            printf("→ ");
+            fgets(messageEnvoi, longueurMessage*sizeof(char),stdin);
+            // On enleve le '\n'
+            messageEnvoi[strlen(messageEnvoi) - 1]=0;
+            ecrits = write(socket, messageEnvoi,strlen(messageEnvoi));
+            switch(ecrits)
+            {
+                case -1: 
+                    perror("write");
+                    close(socket);
+                    exit(-3);
+                case 0:
+                    fprintf(stderr, "\n[-]La socket a été fermée par le serveur !\n");
+                    close(socket);
+                    exit(-5);
+                default:
+                    printf("Message %s envoyé avec succés (%d octets)\n",messageEnvoi,ecrits);
+            }
+        */
+        
         memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
         puts("\n↔↔↔ Envoyer Un Message ↔↔↔");
         printf("→ ");
