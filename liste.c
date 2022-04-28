@@ -1,5 +1,6 @@
 #include <stdio.h> 
 #include <stdlib.h>
+#include <string.h>
 #include "liste.h"
 
 #define longueurMessage 256
@@ -15,13 +16,12 @@ liste * cree_liste()
     {
         exit(EXIT_FAILURE);
     }
-
+    
     element->nombre = 0;
     element-> id = 0;
     element->suivant = NULL;
     element -> precedent = NULL;
     element -> chaine = malloc(longueurMessage*sizeof(char));
-    element -> chaine = "Ayoub";
     Liste->premier = element;
     return Liste;
 }
@@ -44,7 +44,8 @@ void ajouter_debut(liste * l,int id, int val, char * chaine)
     Element *element = malloc(sizeof(*element));
     element -> nombre = val;
     element -> id = id;
-    element -> chaine = chaine;    
+    element -> chaine = malloc(longueurMessage*sizeof(char));
+    strcpy(element -> chaine,chaine);    
     element -> precedent = NULL;
     element -> suivant = l -> premier;
     element -> suivant -> precedent = element;
@@ -79,6 +80,8 @@ void ajouter_fin_recur(Element *element,int id, int val, char * chaine)
         inserer -> id = id;
         inserer -> nombre = val;
         element->suivant->precedent = inserer;
+        inserer -> chaine = malloc(longueurMessage*sizeof(char));
+        strcpy(inserer -> chaine,chaine);    
         inserer -> chaine = chaine;
         element -> suivant = inserer; 
     }

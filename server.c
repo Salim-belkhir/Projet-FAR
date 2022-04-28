@@ -44,7 +44,7 @@ char ** Separation(char * message){
 
     // le caractères spécial
     msg[0][0] = message[0];
-    printf("le caractère est → %s \n", msg[0]);
+    //printf("le caractère est → %s \n", msg[0]);
     
     // Utilisateur qui recoie le message
     int j = 1;
@@ -55,7 +55,7 @@ char ** Separation(char * message){
         k++;
         j++;    
     }
-    printf("l'utilisateur est → %s \n", msg[1]);
+    //printf("l'utilisateur est → %s \n", msg[1]);
     
     // Message
     // La définitions de séparateurs connus.
@@ -72,7 +72,7 @@ char ** Separation(char * message){
         // On demande le token suivant.
         strToken = strtok( NULL, "");
     }
-    printf("le message est → %s \n", msg[2]);
+    //printf("le message est → %s \n", msg[2]);
     //int taille = strlen(message);
 
     return msg;
@@ -84,13 +84,12 @@ void EnvoyerMessageSpe(int socketClient, char * Message, char * client, char spe
     Element * actuel = utilisateurConnecter->premier;
     while(actuel -> suivant != NULL)
     {
-        printf("pseudo %s\n", actuel -> chaine);
         if(socketClient != actuel -> nombre && (strcmp(client, actuel -> chaine) == 0))
         {
             switch (special)
             {
                 case '@': 
-                strcat(Message , "normal");
+                strcat(Message , " normal ");
                 break;
             }
 
@@ -154,6 +153,7 @@ void * Relayer(void * SocketClient)
     {
         memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
         memset(messageRecu, 0x00, longueurMessage*sizeof(char));
+        
         //On lit le message envoyé par le client
         lus = read(socketClient,messageRecu,longueurMessage*sizeof(char));    
         switch(lus)
@@ -168,7 +168,7 @@ void * Relayer(void * SocketClient)
             default:
                 printf("Message receive by the client : %s (%d octets)\n\n",messageRecu,lus);
         }
-        
+
         if (i<1)
         {
             Element * actuel = utilisateurConnecter->premier;
@@ -176,9 +176,7 @@ void * Relayer(void * SocketClient)
             {
                 if(socketClient == actuel -> nombre)
                 {
-                    printf("pseudo avant → %s\n", actuel -> chaine);
                     strcpy(actuel -> chaine,messageRecu);
-                    printf("pseudo apres → %s\n",  actuel -> chaine);
                 }
                 actuel = actuel->suivant;
             }
@@ -246,7 +244,7 @@ int main(int argc, char * argv[])
     // Création d'un socket de communication
     // PF_INET c'est le domaine pour le protocole internet IPV4 
     socketServeur = socket(PF_INET, SOCK_STREAM, 0);
-    /* 0 indique que l’on utilisera leprotocole par défaut 
+    /* 0 indique que l’on utilisera le protocole par défaut 
     associé à SOCK_STREAM soit TCP
     */
 
@@ -289,6 +287,9 @@ int main(int argc, char * argv[])
     }
     
     int identifierClient = 0;
+    char * pseudo = malloc(longueurAdresse*sizeof(char));
+    strcpy(pseudo,"inconnu");
+
     while(1){
         printf("Server on listening! \n");
         printf("nombre de client connecté %d\n", nombreClientConnecter);  
@@ -307,13 +308,12 @@ int main(int argc, char * argv[])
         }
 
         printf("on ajoute : %d a la file\n", socketDialogue);
-        if(nombreClientConnecter == 0) ajouter_debut(utilisateurConnecter, identifierClient, socketDialogue, "inconnu");
-        else ajouter_fin(utilisateurConnecter,identifierClient, socketDialogue, "inconnu");
+        if(nombreClientConnecter == 0) ajouter_debut(utilisateurConnecter, identifierClient, socketDialogue, pseudo );
+        else ajouter_fin(utilisateurConnecter,identifierClient, socketDialogue, pseudo );
         printf("taille : %d \n",Taille(utilisateurConnecter));  
         //une fois qu'on a réussi à connecter le client, on lance le thread qui va relayer les messages
         pthread_create(&tRelay, NULL, Relayer, (void *)(long) socketDialogue);
-        nombreClientConnecter = Taille(utilisateurConnecter);       
-        
+        nombreClientConnecter = Taille(utilisateurConnecter);              
         // chaque client à son propre identifiant 
         identifierClient ++;
     }

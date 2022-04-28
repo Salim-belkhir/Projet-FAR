@@ -10,8 +10,36 @@
 
 #define longueurMessage 256
 
+void * connection(void * socketClient)
+{
+    int ecrits;
+    int socket = (long)socketClient;
+    // le message de la couche application ! 
+    char messageEnvoi[longueurMessage];
+    // Envoie un message au serveur et gestion des erreurs
+    //sprintf(messageEnvoi, "Holla");
 
-
+    memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
+    puts("\n↔↔↔ Choisissez un pseudo ↔↔↔");
+    printf("→ ");
+    fgets(messageEnvoi, longueurMessage*sizeof(char),stdin);
+    messageEnvoi[strlen(messageEnvoi) - 1]=0;
+    ecrits = write(socket, messageEnvoi,strlen(messageEnvoi));
+    switch(ecrits)
+    {
+        case -1: 
+            perror("write");
+            close(socket);
+            exit(-3);
+        case 0:
+            fprintf(stderr, "\n[-]La socket a été fermée par le serveur !\n");
+            close(socket);
+            exit(-5);
+        default:
+            printf("Pseudo %s envoyé avec succés (%d octets)\n",messageEnvoi,ecrits);
+    }
+    pthread_exit(0);
+}
 
 //fonction qui va servir au thread pour l'envoi de messages
 void * Envoyer(void * socketClient)
@@ -22,18 +50,11 @@ void * Envoyer(void * socketClient)
     char messageEnvoi[longueurMessage];
     // Envoie un message au serveur et gestion des erreurs
     //sprintf(messageEnvoi, "Holla");
-    int i = 0;
     while(1)
     {  
         memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
-        if(i<1)
-        {
-            puts("\n↔↔↔ Choisissez un pseudo ↔↔↔");
-            printf("→ ");
-        } else {
-            puts("\n↔↔↔ Envoyer Un Message ↔↔↔");
-            printf("→ ");
-        }
+        puts("\n↔↔↔ Envoyer Un Message ↔↔↔");
+        printf("→ ");
         fgets(messageEnvoi, longueurMessage*sizeof(char),stdin);
         messageEnvoi[strlen(messageEnvoi) - 1]=0;
         ecrits = write(socket, messageEnvoi,strlen(messageEnvoi));
@@ -50,7 +71,6 @@ void * Envoyer(void * socketClient)
             default:
                 printf("Message %s envoyé avec succés (%d octets)\n",messageEnvoi,ecrits);
         }
-        i++;
     }
     pthread_exit(0);
 }
@@ -100,6 +120,8 @@ int main(int argc, char *argv[])
     //  Creation des threads pour envoyer et recevoir des messages 
     pthread_t tEcouter;
     pthread_t tRecepteur;
+    // Creation de thread pour la connexion
+    pthread_t tConnexion;
 
     // Création d'un socket de communication
     // PF_INET c'est le domaine pour le protocole internet IPV4 
@@ -142,11 +164,12 @@ int main(int argc, char *argv[])
     }
     printf("Connection reussi avec the server \n");
 
-    
+    pthread_create(&tConnexion, NULL, connection, (void *) socketClient);
+    pthread_join(tConnexion, NULL);
+
     pthread_create(&tRecepteur, NULL, Recevoir, (void *) socketClient);
     // Initialisation à 0 les messages 
     pthread_create(&tEcouter, NULL, Envoyer, (void *) socketClient);
-    
     pthread_join(tEcouter, NULL);    
     pthread_join(tRecepteur, NULL);
     // On a fini on coupe la ressource pour quitter
