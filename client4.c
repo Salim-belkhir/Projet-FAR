@@ -22,34 +22,18 @@ void * Envoyer(void * socketClient)
     char messageEnvoi[longueurMessage];
     // Envoie un message au serveur et gestion des erreurs
     //sprintf(messageEnvoi, "Holla");
+    int i = 0;
     while(1)
-    {
-        /*
-            memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
-            puts("\n↔↔↔ Choisissez un identifiant ↔↔↔");
-            printf("→ ");
-            fgets(messageEnvoi, longueurMessage*sizeof(char),stdin);
-            // On enleve le '\n'
-            messageEnvoi[strlen(messageEnvoi) - 1]=0;
-            ecrits = write(socket, messageEnvoi,strlen(messageEnvoi));
-            switch(ecrits)
-            {
-                case -1: 
-                    perror("write");
-                    close(socket);
-                    exit(-3);
-                case 0:
-                    fprintf(stderr, "\n[-]La socket a été fermée par le serveur !\n");
-                    close(socket);
-                    exit(-5);
-                default:
-                    printf("Message %s envoyé avec succés (%d octets)\n",messageEnvoi,ecrits);
-            }
-        */
-        
+    {  
         memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
-        puts("\n↔↔↔ Envoyer Un Message ↔↔↔");
-        printf("→ ");
+        if(i<1)
+        {
+            puts("\n↔↔↔ Choisissez un pseudo ↔↔↔");
+            printf("→ ");
+        } else {
+            puts("\n↔↔↔ Envoyer Un Message ↔↔↔");
+            printf("→ ");
+        }
         fgets(messageEnvoi, longueurMessage*sizeof(char),stdin);
         messageEnvoi[strlen(messageEnvoi) - 1]=0;
         ecrits = write(socket, messageEnvoi,strlen(messageEnvoi));
@@ -66,6 +50,7 @@ void * Envoyer(void * socketClient)
             default:
                 printf("Message %s envoyé avec succés (%d octets)\n",messageEnvoi,ecrits);
         }
+        i++;
     }
     pthread_exit(0);
 }
@@ -76,7 +61,6 @@ void * Recevoir(void * socketClient)
 {
     // Reception des données du serveur
     int lus;
-
     // le message de la couche application!
     char messageRecu[longueurMessage];
     int socket = (long)socketClient;
@@ -149,20 +133,20 @@ int main(int argc, char *argv[])
     /*
     connect() renvoie 0 s’il réussit, ou -1 s’il échoue, auquel cas errno contient lecode d’erreur
     */
-
+       
     if((connect(socketClient, (struct sockaddr *)&pointDeRencontreDistant, longueurAdresse)) == -1)
     {
         perror("connect");
         close(socketClient); // on ferme la ressourece pour quitter
         exit(-2);
     }
-
     printf("Connection reussi avec the server \n");
 
     
     pthread_create(&tRecepteur, NULL, Recevoir, (void *) socketClient);
     // Initialisation à 0 les messages 
     pthread_create(&tEcouter, NULL, Envoyer, (void *) socketClient);
+    
     pthread_join(tEcouter, NULL);    
     pthread_join(tRecepteur, NULL);
     // On a fini on coupe la ressource pour quitter

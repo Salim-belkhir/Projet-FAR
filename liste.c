@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include "liste.h"
 
+#define longueurMessage 256
+
 //fonction de création d'une liste vide 
 liste * cree_liste()
 {
@@ -18,7 +20,7 @@ liste * cree_liste()
     element-> id = 0;
     element->suivant = NULL;
     element -> precedent = NULL;
-    element -> chaine = (char*)(malloc(sizeof(char)));
+    element -> chaine = malloc(longueurMessage*sizeof(char));
     element -> chaine = "Ayoub";
     Liste->premier = element;
     return Liste;

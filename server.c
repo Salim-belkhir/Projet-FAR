@@ -72,21 +72,28 @@ char ** Separation(char * message){
         // On demande le token suivant.
         strToken = strtok( NULL, "");
     }
-    
     printf("le message est → %s \n", msg[2]);
     //int taille = strlen(message);
 
     return msg;
 }
 
-void EnvoyerMessageSpe(int socketClient, char * Message, char * client)
+void EnvoyerMessageSpe(int socketClient, char * Message, char * client, char special)
 {
     int ecrits;
     Element * actuel = utilisateurConnecter->premier;
     while(actuel -> suivant != NULL)
     {
+        printf("pseudo %s\n", actuel -> chaine);
         if(socketClient != actuel -> nombre && (strcmp(client, actuel -> chaine) == 0))
         {
+            switch (special)
+            {
+                case '@': 
+                strcat(Message , "normal");
+                break;
+            }
+
             ecrits = write(actuel -> nombre, Message,strlen(Message));
             switch(ecrits)
             {
@@ -137,11 +144,12 @@ void EnvoyerMessage(int socketClient, char * Message)
 void * Relayer(void * SocketClient)
 {   //on ecrase d'abord les données contenues dans messageEnvoi et messageRecu pour éviter d'avoir des données non désirables
     int socketClient = (long) SocketClient;
-    char messageEnvoi[longueurMessage];
-    char messageRecu[longueurMessage];
+    char * messageEnvoi = malloc(longueurMessage* sizeof(char));
+    char * messageRecu = malloc(longueurMessage*sizeof(char)) ;
     int lus;
     
     // On réceptionne les données du client (cf. protocole)
+    int i = 0;
     while(1)
     {
         memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
@@ -160,37 +168,60 @@ void * Relayer(void * SocketClient)
             default:
                 printf("Message receive by the client : %s (%d octets)\n\n",messageRecu,lus);
         }
-
-
-        // verification de si c'est un message spécial
-        // et l'envoie des données vers les clients (cf. protocole)   
-        char ** separation;
-        switch (messageRecu[0])
+        
+        if (i<1)
         {
-        case '/':
-            /* la fin */
-            printf("La discussion est finie\n");
-            break;
-        case '@':
-            separation = Separation(messageRecu);
-            printf("le client %s\n",separation[1]);                
-            printf("le message %s\n", separation[2]);
-            strcpy(messageEnvoi, separation[2]);    
-            pthread_mutex_lock(&mutex);
-            EnvoyerMessageSpe(socketClient, messageEnvoi, separation[1]);        
-            pthread_mutex_unlock(&mutex);
-            break;
-        case '!':
-            /* Urgent */ 
-            break;
-        default:
-            strcpy(messageEnvoi,messageRecu);    
-            pthread_mutex_lock(&mutex);
-            EnvoyerMessage(socketClient, messageEnvoi);        
-            pthread_mutex_unlock(&mutex);
-            break;
+            Element * actuel = utilisateurConnecter->premier;
+            while(actuel -> suivant != NULL)
+            {
+                if(socketClient == actuel -> nombre)
+                {
+                    printf("pseudo avant → %s\n", actuel -> chaine);
+                    strcpy(actuel -> chaine,messageRecu);
+                    printf("pseudo apres → %s\n",  actuel -> chaine);
+                }
+                actuel = actuel->suivant;
+            }
+            i++;
+        } else 
+        {
+            // verification de si c'est un message spécial
+            // et l'envoie des données vers les clients (cf. protocole)   
+            char ** separation;
+            switch (messageRecu[0])
+            {
+                case '/':
+                    /* la fin */
+                    printf("La discussion est finie\n");
+                    break;
+                case '@':
+                    separation = Separation(messageRecu);
+                    printf("le client %s\n",separation[1]);                
+                    printf("le message %s\n", separation[2]);
+                    strcpy(messageEnvoi, separation[2]);    
+                    pthread_mutex_lock(&mutex);
+                        EnvoyerMessageSpe(socketClient, messageEnvoi, separation[1], '@');        
+                    pthread_mutex_unlock(&mutex);
+                    break;
+                case '!':
+                    separation = Separation(messageRecu);
+                    printf("le client %s\n",separation[1]);                
+                    printf("le message %s\n", separation[2]);
+                    strcpy(messageEnvoi, separation[2]);    
+                    pthread_mutex_lock(&mutex);
+                        EnvoyerMessageSpe(socketClient, messageEnvoi, separation[1], '!');        
+                    pthread_mutex_unlock(&mutex);
+                    /* Urgent */ 
+                    break;
+                default:
+                    strcpy(messageEnvoi,messageRecu);    
+                    pthread_mutex_lock(&mutex);
+                        EnvoyerMessage(socketClient, messageEnvoi);        
+                    pthread_mutex_unlock(&mutex);
+                    break;
+            }
         }
-
+        
     }
     closeAllsockets(utilisateurConnecter);
     pthread_exit(0);    
@@ -203,7 +234,6 @@ int main(int argc, char * argv[])
     struct sockaddr_in pointDeRencontreLocal;
     socklen_t longueurAdresse;
 
-
     int socketDialogue;
     struct sockaddr_in pointDeRencontreDistant;
     int retour;
@@ -212,7 +242,6 @@ int main(int argc, char * argv[])
     pthread_mutex_init(&mutex, NULL);
     //  Creation des threads pour envoyer et recevoir des messages 
     pthread_t tRelay;
-
 
     // Création d'un socket de communication
     // PF_INET c'est le domaine pour le protocole internet IPV4 
@@ -229,7 +258,6 @@ int main(int argc, char * argv[])
         exit(-1); // On sort en indiquant un code erreur
     }
     printf("[+]Socket created successfully ! (%d)\n", socketServeur);
-    
     
     longueurAdresse = sizeof(pointDeRencontreLocal);
 
@@ -277,9 +305,10 @@ int main(int argc, char * argv[])
             close(socketServeur);
             exit(-4);
         }
+
         printf("on ajoute : %d a la file\n", socketDialogue);
-        if(nombreClientConnecter == 0) ajouter_debut(utilisateurConnecter, identifierClient, socketDialogue, "Ayoub");
-        else ajouter_fin(utilisateurConnecter,identifierClient, socketDialogue, "Ayoub");
+        if(nombreClientConnecter == 0) ajouter_debut(utilisateurConnecter, identifierClient, socketDialogue, "inconnu");
+        else ajouter_fin(utilisateurConnecter,identifierClient, socketDialogue, "inconnu");
         printf("taille : %d \n",Taille(utilisateurConnecter));  
         //une fois qu'on a réussi à connecter le client, on lance le thread qui va relayer les messages
         pthread_create(&tRelay, NULL, Relayer, (void *)(long) socketDialogue);
