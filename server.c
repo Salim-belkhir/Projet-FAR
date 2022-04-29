@@ -27,7 +27,7 @@ void closeAllsockets(liste * liste)
     Element *actuel = liste->premier;
     while (actuel->suivant != NULL)
     {
-        close(actuel->nombre);
+        close(actuel -> id);
         actuel = actuel->suivant;
     }
 }
@@ -78,22 +78,22 @@ char ** Separation(char * message){
     return msg;
 }
 
-void EnvoyerMessageSpe(int socketClient, char * Message, char * client, char special)
+void EnvoyerMessageSpe(int socketClient, char * Message, char * client, char commandeSpecial)
 {
     int ecrits;
     Element * actuel = utilisateurConnecter->premier;
     while(actuel -> suivant != NULL)
     {
-        if(socketClient != actuel -> nombre && (strcmp(client, actuel -> chaine) == 0))
+        if(socketClient != actuel -> id && strcmp(client, actuel -> chaine) == 0)
         {
-            switch (special)
+            switch (commandeSpecial)
             {
                 case '@': 
                 strcat(Message , " normal ");
                 break;
             }
 
-            ecrits = write(actuel -> nombre, Message,strlen(Message));
+            ecrits = write(actuel -> id, Message,strlen(Message));
             switch(ecrits)
             {
                 case -1: 
@@ -117,9 +117,9 @@ void EnvoyerMessage(int socketClient, char * Message)
     Element * actuel = utilisateurConnecter->premier;
     while(actuel -> suivant != NULL)
     {
-        if(socketClient != actuel -> nombre)
+        if(socketClient != actuel -> id)
         {
-            ecrits = write(actuel -> nombre, Message,strlen(Message));
+            ecrits = write(actuel -> id, Message,strlen(Message));
             switch(ecrits)
             {
                 case -1: 
@@ -137,6 +137,22 @@ void EnvoyerMessage(int socketClient, char * Message)
     }
 }
 
+
+// La fonction vérifie si un pseudo est disponible donc aucun client ne la choisit avant
+// renvoie si il n'existe pas 1 sinon
+int existPseudo(char * pseudo) {
+    int result = 0;
+    Element * actuel = utilisateurConnecter->premier;
+    while(actuel -> suivant != NULL && result == 0)
+    {
+        if(strcmp(pseudo, actuel -> chaine) == 0)
+        {
+            result = 1;
+        }
+        actuel = actuel->suivant;
+    }
+    return result;
+}
 
 //fonction qui va être utilisée par un thread du serveur pour 
 //pouvoir transmettre les messages du client 1 au client 2
@@ -166,7 +182,11 @@ void * Relayer(void * SocketClient)
                 fprintf(stderr, "[!]The socket was closed by the client !\n\n");
                 closeAllsockets(utilisateurConnecter);
             default:
-                printf("Message receive by the client : %s (%d octets)\n\n",messageRecu,lus);
+                if(i<1){
+                    printf("Pseudo recu du client : %s (%d octets)\n\n",messageRecu,lus);
+                }else {
+                    printf("Message recu du client : %s (%d octets)\n\n",messageRecu,lus);
+                }
         }
 
         if (i<1)
@@ -174,13 +194,24 @@ void * Relayer(void * SocketClient)
             Element * actuel = utilisateurConnecter->premier;
             while(actuel -> suivant != NULL)
             {
-                if(socketClient == actuel -> nombre)
+                if(socketClient == actuel -> id)
                 {
-                    strcpy(actuel -> chaine,messageRecu);
+                    if (existPseudo(messageRecu) == 0)
+                    {
+                        strcpy(actuel -> chaine,messageRecu);    
+                        strcpy(messageEnvoi,"valide");
+                        EnvoyerMessageSpe(socketClient, messageEnvoi, " ", ' ');                            
+                        printf("le pseudo choisit est valide!\n");
+                        i++;
+                    } else 
+                    {
+                        strcpy(messageEnvoi,"invalide");
+                        EnvoyerMessageSpe(socketClient, messageEnvoi, " ", ' ');        
+                        printf("le pseudo choisit existe déja donc il faut choisir un autre!\n");
+                    }
                 }
                 actuel = actuel->suivant;
             }
-            i++;
         } else 
         {
             // verification de si c'est un message spécial
@@ -193,6 +224,7 @@ void * Relayer(void * SocketClient)
                     printf("La discussion est finie\n");
                     break;
                 case '@':
+                    printf("on est dans @ case \n");
                     separation = Separation(messageRecu);
                     printf("le client %s\n",separation[1]);                
                     printf("le message %s\n", separation[2]);
@@ -202,6 +234,7 @@ void * Relayer(void * SocketClient)
                     pthread_mutex_unlock(&mutex);
                     break;
                 case '!':
+                    printf("on est dans ! case \n");
                     separation = Separation(messageRecu);
                     printf("le client %s\n",separation[1]);                
                     printf("le message %s\n", separation[2]);
@@ -212,6 +245,7 @@ void * Relayer(void * SocketClient)
                     /* Urgent */ 
                     break;
                 default:
+                    printf("on est dans default case \n");
                     strcpy(messageEnvoi,messageRecu);    
                     pthread_mutex_lock(&mutex);
                         EnvoyerMessage(socketClient, messageEnvoi);        
@@ -291,7 +325,7 @@ int main(int argc, char * argv[])
     strcpy(pseudo,"inconnu");
 
     while(1){
-        printf("Server on listening! \n");
+        printf("Server En Ecoute! \n");
         printf("nombre de client connecté %d\n", nombreClientConnecter);  
         //Boucle d'attente de connexion: en théorie, un serveur attend indéfiniment
         //Dans un premier temps, il faut s'assurer qu'on a bien deux clients qui vont se connecter
@@ -308,16 +342,16 @@ int main(int argc, char * argv[])
         }
 
         printf("on ajoute : %d a la file\n", socketDialogue);
-        if(nombreClientConnecter == 0) ajouter_debut(utilisateurConnecter, identifierClient, socketDialogue, pseudo );
-        else ajouter_fin(utilisateurConnecter,identifierClient, socketDialogue, pseudo );
+        identifierClient = socketDialogue;
+        if(nombreClientConnecter == 0) ajouter_debut(utilisateurConnecter, identifierClient,  pseudo );
+        else ajouter_fin(utilisateurConnecter,identifierClient, pseudo );
         printf("taille : %d \n",Taille(utilisateurConnecter));  
         //une fois qu'on a réussi à connecter le client, on lance le thread qui va relayer les messages
         pthread_create(&tRelay, NULL, Relayer, (void *)(long) socketDialogue);
         nombreClientConnecter = Taille(utilisateurConnecter);              
         // chaque client à son propre identifiant 
-        identifierClient ++;
-    }
-    
+
+    }    
     close(socketServeur);
     return 0;
 }

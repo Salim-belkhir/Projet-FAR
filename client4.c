@@ -10,6 +10,9 @@
 
 #define longueurMessage 256
 
+// Connecté ou pas!
+int status = 0;
+
 void * connection(void * socketClient)
 {
     int ecrits;
@@ -18,7 +21,6 @@ void * connection(void * socketClient)
     char messageEnvoi[longueurMessage];
     // Envoie un message au serveur et gestion des erreurs
     //sprintf(messageEnvoi, "Holla");
-
     memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
     puts("\n↔↔↔ Choisissez un pseudo ↔↔↔");
     printf("→ ");
@@ -38,6 +40,7 @@ void * connection(void * socketClient)
         default:
             printf("Pseudo %s envoyé avec succés (%d octets)\n",messageEnvoi,ecrits);
     }
+    
     pthread_exit(0);
 }
 
@@ -87,7 +90,7 @@ void * Recevoir(void * socketClient)
     while (1)
     {
         memset(messageRecu, 0x00, longueurMessage*sizeof(char));
-        lus = read(socket, messageRecu, longueurMessage*sizeof(char));
+        lus = read(socket, messageRecu, longueurMessage*sizeof(char)); 
         switch(lus)
         {
             case -1: 
@@ -99,13 +102,27 @@ void * Recevoir(void * socketClient)
                 close(socket);
                 exit(-5);
             default:
-                //puts(messageRecu);
-                printf("\nMessage recu de l'autre Client → ");
-                puts(messageRecu);
-
-                // On a fini d'afficher le message recu on affiche la demande d'envoie
-                puts("\n↔↔↔ Envoyer Un Message ↔↔↔");
-                puts("→ ");
+                if(status == 0)
+                {
+                    if(strcmp(messageRecu, "valide") == 0)
+                    {
+                        status = 1;
+                        printf("Le pseudo choisit est bien valide \n");
+                        pthread_exit(0);
+                        break;
+                    }else if(strcmp(messageRecu, "invalide") == 0)
+                    {
+                        printf("Le pseudo choisit exist déja !!\n");
+                    }
+                } else 
+                {
+                    //puts(messageRecu);
+                    printf("\nMessage recu de l'autre Client → ");
+                    puts(messageRecu);
+                    // On a fini d'afficher le message recu on affiche la demande d'envoie
+                    puts("\n↔↔↔ Envoyer Un Message ↔↔↔");
+                    puts("→ ");
+                }
         }
     }
     pthread_exit(0);   
@@ -164,11 +181,16 @@ int main(int argc, char *argv[])
     }
     printf("Connection reussi avec the server \n");
 
-    pthread_create(&tConnexion, NULL, connection, (void *) socketClient);
-    pthread_join(tConnexion, NULL);
 
+    
+    printf("status %d\n", status);
+    while(status == 0)
+    {
+        pthread_create(&tConnexion, NULL, connection, (void *) socketClient);
+        pthread_create(&tRecepteur, NULL, Recevoir, (void *) socketClient);   
+        pthread_join(tConnexion, NULL);    
+    }
     pthread_create(&tRecepteur, NULL, Recevoir, (void *) socketClient);
-    // Initialisation à 0 les messages 
     pthread_create(&tEcouter, NULL, Envoyer, (void *) socketClient);
     pthread_join(tEcouter, NULL);    
     pthread_join(tRecepteur, NULL);
