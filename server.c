@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include "liste.h"
+#include <signal.h>
 
 #define longueurMessage 256
 
@@ -18,14 +19,14 @@ int nombreClientConnecter;
 pthread_mutex_t mutex;
 
 // fermer toutes les sockets des clients connectés
-void closeAllsockets(liste * liste)
+void closeAllsockets(liste * li)
 {
-    if (liste == NULL)
+    if (liste_est_vide(li))
     {
         exit(EXIT_FAILURE);
     }
-    Element *actuel = liste->premier;
-    while (actuel->suivant != NULL)
+    liste* actuel = li;
+    while (liste_est_vide(actuel->suivant) == 0)
     {
         close(actuel -> id);
         actuel = actuel->suivant;
@@ -88,12 +89,12 @@ char ** Separation(char * message){
 // renvoie le pseudo
 char *  pseudoParID(int id){
     char *  result = malloc(longueurMessage*sizeof(char));
-    Element * actuel = utilisateurConnecter->premier;
-    while(actuel -> suivant != NULL)
+    liste * actuel = utilisateurConnecter;
+    while(liste_est_vide(actuel -> suivant) == 0)
     {
         if(actuel -> id == id)
         {
-            strcpy(result,actuel->chaine);
+            strcpy(result,actuel->pseudo);
         }
         actuel = actuel->suivant;
     }
@@ -104,16 +105,18 @@ void EnvoyerMessageSpe(int socketClient, char * Message, char * client, char * c
 {
     int ecrits;
     char * messageEnvoi = malloc(longueurMessage*sizeof(char));
-    Element * actuel = utilisateurConnecter->premier;
-    while(actuel -> suivant != NULL)
+    liste * actuel = utilisateurConnecter;
+    while(liste_est_vide(actuel -> suivant) == 0)
     {
-        if(socketClient != actuel -> id && strcmp(client, actuel -> chaine) == 0)  
+        if(socketClient != actuel -> id && strcmp(client, actuel -> pseudo) == 0)  
         {
-            /*
-            if(strcmp(commandeSpecial, "/fin") == 0):
+            if(strcmp(commandeSpecial, "/fin") == 0)
             {
-                
-            } */
+                utilisateurConnecter = supprimer_val(utilisateurConnecter, socketClient);
+                close(socketClient);
+                nombreClientConnecter = taille_liste(utilisateurConnecter);
+                afficherListe(utilisateurConnecter);
+            } 
             if (strcmp(commandeSpecial,"@") == 0)
             {
                 strcat(messageEnvoi,"@");
@@ -171,7 +174,7 @@ void EnvoyerMessage(int socketClient, char * Message)
     strcat(messageEnvoi,"→ ");
     strcat(messageEnvoi, Message); 
     
-    Element * actuel = utilisateurConnecter->premier;
+    liste * actuel = utilisateurConnecter;
     while(actuel -> suivant != NULL)
     {
         if(socketClient != actuel -> id)
@@ -217,10 +220,10 @@ void reponseClient(int socketClient, char * Message)
 // renvoie si il n'existe pas 1 sinon
 int existPseudo(char * pseudo) {
     int result = 0;
-    Element * actuel = utilisateurConnecter->premier;
+    liste * actuel = utilisateurConnecter;
     while(actuel -> suivant != NULL && result == 0)
     {
-        if(strcmp(pseudo, actuel -> chaine) == 0)
+        if(strcmp(pseudo, actuel -> pseudo) == 0)
         {
             result = 1;
         }
@@ -271,11 +274,11 @@ void * Relayer(void * SocketClient)
                             reponseClient(socketClient, messageEnvoi);                            
                             printf("le pseudo choisit est valide!\n");
                             printf("on ajoute : %d a la file\n", socketClient);
-                            if(nombreClientConnecter == 0) ajouter_debut(utilisateurConnecter, socketClient,  messageRecu );
-                            else ajouter_debut(utilisateurConnecter,socketClient, messageRecu );
-                            printf("taille : %d \n",Taille(utilisateurConnecter));  
+                            if(nombreClientConnecter == 0) utilisateurConnecter = ajouter_debut(utilisateurConnecter, socketClient,  messageRecu );
+                            else utilisateurConnecter = ajouter_debut(utilisateurConnecter,socketClient, messageRecu );
+                            printf("taille : %d \n",taille_liste(utilisateurConnecter));  
                             //une fois qu'on a réussi à connecter le client, on lance le thread qui va relayer les messages
-                            nombreClientConnecter = Taille(utilisateurConnecter);              
+                            nombreClientConnecter = taille_liste(utilisateurConnecter);              
                             // chaque client à son propre identifiant 
                             i++;
                         } else 
@@ -307,9 +310,14 @@ void * Relayer(void * SocketClient)
         
             if(strcmp(separation[0], "/fin") == 0)
             {
-                /* la fin */
-                printf("La discussion est finie\n");
-
+                //déconnexion côté client, on le supprime de la liste des utilisateurs connectés
+                printf("La discussion est finie avec le client numéro : %d\n", socketClient);
+                utilisateurConnecter = supprimer_val(utilisateurConnecter, socketClient);
+                close(socketClient);
+                nombreClientConnecter--;
+                afficherListe(utilisateurConnecter);
+                printf("La taille actuelle après déconnexion est de : %d\n", nombreClientConnecter);
+                pthread_exit(0);
             }
             else if(strcmp(separation[0],"@") == 0)
             {
@@ -318,7 +326,7 @@ void * Relayer(void * SocketClient)
                 printf("le message %s\n", separation[2]);
                 strcpy(messageEnvoi, separation[2]);    
                 pthread_mutex_lock(&mutex);
-                    EnvoyerMessageSpe(socketClient, messageEnvoi, separation[1], separation[0]);        
+                EnvoyerMessageSpe(socketClient, messageEnvoi, separation[1], separation[0]);        
                 pthread_mutex_unlock(&mutex);
             }
             else if(strcmp(separation[0],"/mp") == 0)
@@ -366,7 +374,7 @@ int main(int argc, char * argv[])
     struct sockaddr_in pointDeRencontreDistant;
     int retour;
 
-    utilisateurConnecter = cree_liste();
+    utilisateurConnecter = creer_liste();
     pthread_mutex_init(&mutex, NULL);
     //  Creation des threads pour envoyer et recevoir des messages 
     pthread_t tRelay;
@@ -417,8 +425,8 @@ int main(int argc, char * argv[])
     }
     
     while(1){
-        printf("Server En Ecoute! \n");
-        printf("nombre de client connecté %d\n", nombreClientConnecter);  
+        printf("[+]Serveur En Ecoute! \n");
+        printf("nombre de clients connectés %d\n", taille_liste(utilisateurConnecter));  
         //Boucle d'attente de connexion: en théorie, un serveur attend indéfiniment
         //Dans un premier temps, il faut s'assurer qu'on a bien deux clients qui vont se connecter
         //on va d'abord rester dans cette boucle, tant que deux clients ne se sont pas bien connectés

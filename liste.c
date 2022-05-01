@@ -1,272 +1,216 @@
-#include <stdio.h> 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "liste.h"
 
-#define longueurMessage 256
 
-//fonction de création d'une liste vide 
-liste * cree_liste()
-{
-    liste * Liste = malloc(sizeof(*Liste));
-    Element *element = malloc(sizeof(*element));
+//fonction de création d'une liste
+//Post : retourne une liste vide stockée à l'adresse de la variable "li"
+liste * creer_liste(){
+    liste * li = (liste*) malloc(sizeof(liste));
+    li -> suivant = NULL;
+    li -> precedent = NULL;
+    li -> id = 0;
+    li -> pseudo = NULL; 
+    return li;
+}
 
-    // ALLOCATION ECHOUE
-    if (Liste == NULL || element == NULL)
-    {
-        exit(EXIT_FAILURE);
+
+//fonction de vérification si une liste est vide
+//Pre : il faut que la liste existe
+//Post : retourne 1 (true) si pour cette liste le premier élémen ne posséde pas d'identifiant
+//donc bien vide. Retourne 0 sinon 
+int liste_est_vide(liste * l){
+    if((l -> id == 0 && l -> pseudo == NULL) || l == NULL){
+        return 1;
     }
-
-    element-> id = 0;
-    element->suivant = NULL;
-    element -> precedent = NULL;
-    element -> chaine = malloc(longueurMessage*sizeof(char));
-    Liste->premier = element;
-    return Liste;
-}
-
-//fonction qui vérifie si une liste est vide
-//renvoi 1 si la liste est vide, et 0 sinon
-int liste_est_vide(liste * l)
-{
-    int result = 0;
-    if(l -> premier -> suivant == NULL)
-    {
-        result = 1;
-    }
-    return result;
-}
-
-//fonction qui ajoute l'élément passé en paramètre au début de la liste
-void ajouter_debut(liste * l,int id, char * chaine)
-{
-    Element *element = malloc(sizeof(*element));
-    element -> id = id;
-    element -> chaine = malloc(longueurMessage*sizeof(char));
-    strcpy(element -> chaine,chaine);    
-    element -> precedent = NULL;
-    element -> suivant = l -> premier;
-    element -> suivant -> precedent = element;
-    l-> premier = element;
-}
-
-//fonction qui supprime le premier élément de la liste
-void supprimer_debut(liste * l)
-{
-    /*verfier si la liste est vide*/
-    Element * Asupprimer = l -> premier;
-    l -> premier = Asupprimer -> suivant;
-    Asupprimer->suivant->precedent = l->premier;
-    free(Asupprimer);
-}
-
-
-//fonction qui ajoute l'élément passé en paramètre à la fin de la liste
-void ajouter_fin(liste * l, int id, char * chaine)
-{   
-    ajouter_fin_recur(l -> premier, id, chaine);
-}
-
-//fonction auxiliaire de ajouter_fin qui parcourt la liste
-void ajouter_fin_recur(Element *element,int id, char * chaine)
-{
-    if (element -> suivant -> suivant == NULL)
-    {
-        Element * inserer = malloc(sizeof(*inserer));
-        inserer -> suivant = element -> suivant;
-        inserer-> precedent = element;
-        inserer -> id = id;
-        element->suivant->precedent = inserer;
-        inserer -> chaine = malloc(longueurMessage*sizeof(char));
-        strcpy(inserer -> chaine,chaine);    
-        inserer -> chaine = chaine;
-        element -> suivant = inserer; 
-    }
-    else
-    {
-        ajouter_fin_recur(element -> suivant, id, chaine);
+    else{
+        return 0;
     }
 }
 
-//fonction qui supprime l'élément en fin de liste, ne supprime rien si liste vide
-void supprimer_fin(liste * l)
-{
-    supprimer_fin_recur(l -> premier);
+
+//fonction pour ajouter au début d'une liste un élément
+//Post : remplace la liste passée en paramètres par référence par la nouvelle liste  
+liste* ajouter_debut(liste * l, int identifiant, char * chaine){
+    liste * debut = (liste*) malloc(sizeof(liste));
+    debut -> suivant = l;
+    debut -> id = identifiant;
+    debut -> pseudo = chaine;
+    debut -> precedent = NULL;
+    return debut;
 }
 
-//fonction auxiliaire de supprimer_fin qui parcours la liste
-void supprimer_fin_recur(Element *element)
-{
-    if (element -> suivant -> suivant -> suivant == NULL)
-    {
-        Element * Asupprimer = element -> suivant;
-        element -> suivant->suivant->precedent = element; 
-        element -> suivant =  Asupprimer -> suivant;
-        free(Asupprimer); 
+
+//fonction pour supprimer l'élément du début de la liste
+//Pre : Si la liste est vide, il n'y a rien à supprimer
+//Post : retourne la liste en retirant l'élément de début de la liste
+liste* supprimer_debut(liste * l){
+    if(liste_est_vide(l)){
+        perror("La liste est vide, on peut rien supprimer");
     }
-    else
-    {
-        supprimer_fin_recur(element -> suivant);
+    else{
+        liste * nvl = (liste*) malloc(sizeof(liste));
+        nvl = l -> suivant;
+        nvl->precedent = NULL;
+        //l = nvl;
+        return nvl;
     }
 }
 
-//fonction qui return la liste
-//affiche une erreur si la liste passé en paramètre est vide 
-Element * afficherListe(liste *liste, Element * selectionne)
-{
-    if (liste == NULL)
-    {
-        exit(EXIT_FAILURE);
-    }
 
-    Element *actuel = liste->premier;
-    Element * select;
-    printf("  NULL <-- \n");
-    while (actuel->suivant != NULL)
-    {
-        if(selectionne == actuel)
-        {
-            printf("->");
-            select = actuel;
+//fonction pour ajouter un élément à la fin de la liste
+//Pre : identifiant doit être un entier (socket) et char un pseudo
+//Post : modifie la liste en ajoutant un élément à la fin
+liste * ajouter_fin(liste * l, int identifiant, char * chaine){
+    if(liste_est_vide(l)){
+        liste * li = creer_liste();
+        li->id = identifiant;
+        li->pseudo = chaine;
+        li->precedent = creer_liste();
+        li->suivant = creer_liste();
+        return li;
+    }
+    else{
+        liste * li = malloc(sizeof(*li));
+        li = l;
+        printf("L'adresse du suivant est : %p\n", li->suivant);
+        while(liste_est_vide(li -> suivant) == 0){
+            //printf("Je suis dans le while \n");
+            //printf("L'adresse du suivant est : %p\n", li->suivant);
+            //printf("L'adresse du suivant du suivant est : %p\n", li->suivant->suivant);
+            li = li->suivant;
+            //printf("La nouvelle adresse de li est : %p \n",li);
         }
-        printf(" [ %s ] \n", actuel->chaine);
-        actuel = actuel->suivant;
+        //printf("Je suis sorti du while \n");
+        liste * fin = creer_liste();
+        //printf("La liste est vide ou pas %d\n",liste_est_vide(li->suivant));
+        //printf("L'adresse suivante de la liste est : %p\n", li->suivant);
+        fin->id = identifiant;
+        fin->pseudo = chaine;
+        fin -> precedent = li;
+        //afficherListe(fin);
+        //printf("J'arrive pas à concaténer\n");
+        //li->suivant = NULL;
+        li->suivant = fin;
+        //printf("Tout s'est bien passé");
+        return l;
     }
-    printf("  --> NULL\n");
-    return select;
 }
 
-int Taille(liste *liste)
-{
 
-    if (liste == NULL)
-    {
-        exit(EXIT_FAILURE);
+//fonction qui supprime le dernier élément d'une liste 
+//Pre : la liste ne doit pas être vide
+//Post : retourne la liste modifiée, elle ne possède plus son dernier élément
+liste * supprimer_fin(liste * l){
+    liste * li = malloc(sizeof(*li));
+    li = l;
+    if(liste_est_vide(li)){
+        perror("La liste est vide, je ne peux rien supprimer \n");
     }
+    else{
+        if(liste_est_vide(li -> suivant)){
+            return creer_liste();
+        }
+        else{
+            while(liste_est_vide(li -> suivant -> suivant) == 0){
+                li = li -> suivant;
+            }
+            li -> suivant = creer_liste();
+            return li;
+        }
+    }
+}
 
-    Element *actuel = liste->premier;
+
+//fonction qui supprime la valeur passée en paramètre
+//Pre : la liste ne doit pas être vide et elle doit contenir l'élément
+//Post : la liste est modifiée si elle contient bien l'élément, une seule occurence est supprimée
+liste* supprimer_val(liste * l, int val){
+    liste * li = malloc(sizeof(*li));
+    li = l;
+    if(liste_est_vide(li)){
+        perror("L'élément n'a pas été trouvé\n");
+    }
+    else{
+        if(li -> id == val){
+            if(li->suivant != NULL){
+                li->suivant->precedent = li->precedent;
+            }
+            if(li->precedent != NULL){
+                li->precedent->suivant = li-> suivant;
+            }
+            li->suivant = NULL;
+            li->id = 0;
+            li->precedent = NULL;
+            li->pseudo = NULL;
+            free(li);
+            return l;
+        }
+        else{
+            supprimer_val(l->suivant, val);
+        }
+    }
+}
+
+
+//fonction qui donne la taille de la liste passée en paramètre
+//Post : retourne la taille
+int taille_liste(liste * l){
+    liste * li = malloc(sizeof(*li));
+    li = l;
     int taille = 0;
-    while (actuel->suivant != NULL)
-    {
-        taille ++;
-        actuel = actuel->suivant;
+    if(liste_est_vide(l) == 0){
+        taille++;
+        while(liste_est_vide(li -> suivant) == 0){
+            taille ++;
+            li = li -> suivant;
+        }
     }
     return taille;
 }
 
 
-//fonction qui premet de récuperer l'élément à un certain indice 
-
-//foncton qui retourne l'élément suivant, si il y'en a pas, return l'élément 
-Element * itemSuivant(Element * l)
-{
-    if (l -> suivant -> suivant == NULL)
-    {
-        return l;
-    }
-    else
-    {
-        return l -> suivant;
+//fonction qui parcourt la liste en affichant les éléments de la liste
+//Post : ne retourne rien, affiche seulement à l'écran les éléments
+void afficherListe(liste * l){
+    int taille = taille_liste(l);
+    int i;
+    for(i = 0; i<taille; i++){
+        printf("L'identifiant est %d et le pseudo est : %s \n",l->id, l->pseudo);
+        l = l->suivant;
     }
 }
 
-//fonction qui return l'élément precedent, si il y'en a pas, return l'élément 
-Element * itemPrecedent(Element * l)
-{
-    if (l -> precedent  == NULL)
-    {
-        return l;
+
+
+/*int main(){
+    liste * li = malloc(sizeof(*li));
+    li = creer_liste();
+    int res = liste_est_vide(li);
+    printf("Ladresse de li est : %p \n",li);
+    printf("L'objet pointé par li est : %p \n", &(*li));
+    if(res){
+        printf("La liste est vide \n");
     }
-    else
-    {
-        return l -> precedent;
+    else{
+        printf("La liste est pleine \n");
     }
-}
+    char pseudo[10] = "Salim";
+    char pseudo2[10] = "ayoub";
+    char pseudo3[10] = "Hamid";
+    li = ajouter_debut(li, 1, pseudo2);
+    afficherListe(li);
+    printf("La taille de la liste est : %d \n", taille_liste(li));
+    li = ajouter_debut(li, 3, pseudo);
+    printf("La nouvelle taille de la liste est : %d \n", taille_liste(li));
+    afficherListe(li);
+    li = ajouter_debut(li,2,pseudo3);
+    printf("La taille est : %d \n", taille_liste(li));
+    afficherListe(li);
+    li = supprimer_debut(li);
+    printf("Après avoir supprimé, la taille est de maintenant : %d\n", taille_liste(li));
+    afficherListe(li);
 
-void Options_Liste()
-{
-	printf(" ======================================================\n");
-	printf(" Les choix Possibles :\n");
-    printf(" Choix 1 : Sélectionner item suivant\n");
-    printf(" Choix 2 : Sélectionner item précédent\n");
-    printf(" Choix 3 : Afficher la valeur du socket du client séléctionné\n");
-    printf(" Choix 4 : 'Quitter'\n\n");
-}
-
-/*
-int main(int argc, char const *argv[])
-{
-    
-    liste * l = cree_liste();
-
-    //int estvide = liste_est_vide(l);
-    //printf("%d\n", estvide); // elle dois renvoier 1 car la liste est vide
-
-    ajouter_debut(l , 10, "item1");
-    ajouter_fin(l , 20,"item2");
-    ajouter_fin(l , 30,"item3");
-    ajouter_fin(l , 40,"item4");
-    
-    // supprimer_fin(l);
-    // supprimer_debut(l);
-    
-    // printf("%d \n", l->premier->suivant->precedent->nombre);
-    // printf("%d \n", l->premier->suivant->suivant->precedent->nombre);
-
-    //printf("%d, \n", itemSuivant(l->premier));
-    //printf("%d, \n", itemPrecedent(l->premier->suivant->suivant));
-
-    printf("est ce que la liste est vide ?\n");
-    if ( liste_est_vide(l) == 1)
-    {
-        printf("la liste est vide ! \n");
-    } else { 
-        printf("la liste contient au moin  un element \n");
-    }
-
-    printf(" Bonjour, ceci est une liste doublement chainé à 4 éléments \n");
-    
-    system("clear");
-    Element * maillon;
-    maillon = afficherListe(l,l->premier);
-
-    int fin = 1; 
-    while( fin == 1)
-    {
-        printf("\n");
-        Options_Liste();
-
-        int choix1 = 0; 
-        do
-        {
-            printf("Votre Choix?\n");
-            scanf("%d", &choix1);
-        }while(choix1 < 1 || choix1 > 4);
-
-        switch (choix1)
-        {
-            case 1:
-                system("clear");
-                maillon = afficherListe(l,itemSuivant(maillon));
-                break;
-            case 2:
-                system("clear");
-                maillon = afficherListe(l,itemPrecedent(maillon));
-                break;
-            case 3:
-                printf(" Le nombre du maillon est %d \n", maillon->nombre);
-                break;
-            case 4:
-                fin = 2;
-                system("clear");
-                printf("By by ! \n");
-                exit(EXIT_FAILURE);
-                break;
-            default:
-                printf("\n Oups mauvais choix \n");
-                break;
-        }
-    }
     return 0;
-}
-*/
+}*/

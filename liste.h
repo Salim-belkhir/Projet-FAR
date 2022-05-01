@@ -1,41 +1,28 @@
-typedef struct Element Element;
-
-struct Element
-{
-    int id;
-    Element *suivant;
-    Element * precedent;
-    char * chaine;
-};
-
 typedef struct liste liste;
-struct liste
-{
-    Element * premier;
+
+struct liste{
+    int id;   
+    char * pseudo;  
+    liste * suivant;
+    liste * precedent;
 };
 
-liste * cree_liste();
+
+
+liste * creer_liste();
 
 int liste_est_vide(liste * l);
 
-void ajouter_debut(liste * l, int id, char * chaine);
+liste * ajouter_debut(liste * l, int id, char * chaine);
 
-void supprimer_debut(liste * l);
+liste * supprimer_debut(liste * l);
 
-void ajouter_fin(liste * l, int id, char * chaine);
+liste * ajouter_fin(liste * l, int id, char * chaine);
 
-void ajouter_fin_recur(Element *element,int id, char * chaine);
+liste * supprimer_fin(liste * l);
 
-void supprimer_fin(liste * l);
+liste * supprimer_val(liste * l, int val);
 
-void supprimer_fin_recur(Element *element);
+int taille_liste(liste * l);
 
-int Taille(liste *liste);
-
-Element *  afficherListe(liste * l,Element * selectionne);
-
-Element * itemSuivant(Element * l);
-
-Element * itemPrecedent(Element * l);
-
-void Options_Liste();
+void afficherListe(liste * l);

@@ -7,6 +7,7 @@
 #include <arpa/inet.h> /* pour htons et inet_aton */
 #include <pthread.h>
 #include <unistd.h>
+#include <signal.h>
 
 #define longueurMessage 256
 
@@ -122,6 +123,12 @@ void * Envoyer(void * socketClient)
                 close(socket);
                 exit(-5);
             default:
+                //gestion du cas où le client veut se déconnecter avec le mot "quit"
+                if(strcmp(messageEnvoi, "/fin") == 0){
+                    printf("\n[!]---fin de la discussion---[!]\n\n");
+                    kill(getppid(), SIGTERM);
+                    exit(0);
+                }
                 printf("Message %s envoyé avec succés ☻ (%d octets)\n",messageEnvoi,ecrits);
         }
     }
