@@ -14,6 +14,19 @@
 // Connecté ou pas!
 int status = 0;
 
+// lister les commandes pour les mode de message possible
+void Commandes()
+{
+    FILE * cmd;
+    char c;
+    cmd=fopen("Commande.txt","rt");
+    while((c=fgetc(cmd))!=EOF){
+        printf("%c",c);
+    }
+    fclose(cmd);
+}
+
+
 void connection(int socketClient)
 {
     int ecrits;
@@ -105,7 +118,8 @@ void * Envoyer(void * socketClient)
     // Envoie un message au serveur et gestion des erreurs
     //sprintf(messageEnvoi, "Holla");
     while(1)
-    {  
+    {
+        Commandes();  
         memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
         puts("\n☼☼☼ Envoyer Un Message ☼☼☼");
         printf("→ ");

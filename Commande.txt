@@ -1,0 +1,15 @@
+===================================================
+Tous Les commande Possible Pour Les Messages
+
+@ User Message
+
+Message Privé
+/mp User Message
+
+Message urgent
+! User Message
+
+Tous le monde
+Message
+
+===================================================
