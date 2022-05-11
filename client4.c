@@ -9,23 +9,10 @@
 #include <unistd.h>
 #include <signal.h>
 
-#define longueurMessage 256
+#define longueurMessage 10000
 
 // Connecté ou pas!
 int status = 0;
-
-// lister les commandes pour les mode de message possible
-void Commandes()
-{
-    FILE * cmd;
-    char c;
-    cmd=fopen("Commande.txt","rt");
-    while((c=fgetc(cmd))!=EOF){
-        printf("%c",c);
-    }
-    fclose(cmd);
-}
-
 
 void connection(int socketClient)
 {
@@ -116,10 +103,9 @@ void * Envoyer(void * socketClient)
     // le message de la couche application ! 
     char messageEnvoi[longueurMessage];
     // Envoie un message au serveur et gestion des erreurs
-    //sprintf(messageEnvoi, "Holla");
+    printf("► Envoyer /help pour voir la liste des commandes possible ◄\n");
     while(1)
     {
-        Commandes();  
         memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
         puts("\n☼☼☼ Envoyer Un Message ☼☼☼");
         printf("→ ");

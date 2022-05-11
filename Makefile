@@ -4,8 +4,8 @@ server :  server.c
 hostname : 
 	hostname -I
 executeServer :
-	./server 192.168.0.49 5000
+	./server $(adresseIp) 5000
 client4 : client4.c
 	gcc -o client4 client4.c -lpthread
 executeClient : 
-	./client4 192.168.0.49 5000
+	./client4 $(adresseIp) 5000

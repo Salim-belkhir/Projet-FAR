@@ -1,5 +1,5 @@
 ===================================================
-Tous Les commande Possible Pour Les Messages
+Toutes Les commandes Possible Pour Les Messages
 
 @ User Message
 
@@ -12,4 +12,6 @@ Message urgent
 Tous le monde
 Message
 
+Liste des commandes
+/help
 ===================================================
