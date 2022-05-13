@@ -10,7 +10,7 @@
 #include "liste.h"
 #include <signal.h>
 
-#define longueurMessage 256
+#define longueurMessage 10000
 
 // liste contenant les socket des  clients à relayer 
 // si socket == -1 → pas connecté
@@ -19,14 +19,14 @@ int nombreClientConnecter;
 pthread_mutex_t mutex;
 
 // fermer toutes les sockets des clients connectés
-void closeAllsockets(liste * li)
+void closeAllsockets()
 {
-    if (liste_est_vide(li))
+    if (liste_est_vide(utilisateurConnecter))
     {
         exit(EXIT_FAILURE);
     }
-    liste* actuel = li;
-    while (liste_est_vide(actuel->suivant) == 0)
+    Element * actuel = utilisateurConnecter -> premier;
+    while (actuel-> suivant != NULL)
     {
         close(actuel -> id);
         actuel = actuel->suivant;
@@ -72,16 +72,15 @@ char ** Separation(char * message){
         printf("msg[%d] → %s\n", i, msg[i]);
     }
     */
-    // le caractères spécial
-    printf("le caractère est → %s \n", msg[0]);
-    
-    // Utilisateur qui recoie le message
-    printf("l'utilisateur est → %s \n", msg[1]);
+    //// le caractères spécial
+    //printf("le caractère est → %s \n", msg[0]);
+    //
+    //// Utilisateur qui recoie le message
+    //printf("l'utilisateur est → %s \n", msg[1]);
 
-    // Message qui sera envoyer
-    printf("le message est → %s \n", msg[2]);
-    //int taille = strlen(message);
-
+    //// Message qui sera envoyer
+    //printf("le message est → %s \n", msg[2]);
+    ////int taille = strlen(message);
     return msg;
 }
 
@@ -89,8 +88,8 @@ char ** Separation(char * message){
 // renvoie le pseudo
 char *  pseudoParID(int id){
     char *  result = malloc(longueurMessage*sizeof(char));
-    liste * actuel = utilisateurConnecter;
-    while(liste_est_vide(actuel -> suivant) == 0)
+    Element * actuel = utilisateurConnecter -> premier;
+    while(actuel -> suivant != NULL)
     {
         if(actuel -> id == id)
         {
@@ -101,37 +100,50 @@ char *  pseudoParID(int id){
     return result;
 }
 
-
-//Réception de fichiers par le client
-void StockageMessage(){
-    
+// lister les commandes pour les mode de message possible
+char * Commandes()
+{
+    FILE * cmd;
+    int i = 0;
+    char c;
+    char * listeCommandes = malloc(longueurMessage*sizeof(char));
+    cmd=fopen("Commande.txt","rt");
+    while((c=fgetc(cmd))!=EOF){
+        listeCommandes[i] = c;
+        i++;
+    }
+    fclose(cmd);
+    return listeCommandes;
 }
-
 
 
 void EnvoyerMessageSpe(int socketClient, char * Message, char * client, char * commandeSpecial)
 {
+
     int ecrits;
     char * messageEnvoi = malloc(longueurMessage*sizeof(char));
-    liste * actuel = utilisateurConnecter;
-    while(liste_est_vide(actuel -> suivant) == 0)
+    Element * actuel = utilisateurConnecter-> premier;
+    while(actuel -> suivant != NULL)
     {
         if(socketClient != actuel -> id && strcmp(client, actuel -> pseudo) == 0)  
         {
+            printf("on rentre dans la condition \n");
             if(strcmp(commandeSpecial, "/fin") == 0)
             {
-                utilisateurConnecter = supprimer_val(utilisateurConnecter, socketClient);
-                close(socketClient);
-                nombreClientConnecter = taille_liste(utilisateurConnecter);
+                supprimer_val(utilisateurConnecter, socketClient);                
+                printf("nombreClientConnecter %d\n", liste_taille(utilisateurConnecter));
                 afficherListe(utilisateurConnecter);
+                close(socketClient);
             } 
             if (strcmp(commandeSpecial,"@") == 0)
             {
+                printf("on vas cree le @ message \n");
                 strcat(messageEnvoi,"@");
                 strcat(messageEnvoi,pseudoParID(socketClient));
                 strcat(messageEnvoi," vous a envoyé ce message : \n");
                 strcat(messageEnvoi,"→ ");
                 strcat(messageEnvoi, Message);
+                printf("le @ message est %s\n", messageEnvoi);
             }
             else if(strcmp(commandeSpecial,"!") == 0)
             {
@@ -151,7 +163,7 @@ void EnvoyerMessageSpe(int socketClient, char * Message, char * client, char * c
                 strcat(messageEnvoi,"→ ");
                 strcat(messageEnvoi, Message);  
             }    
-            printf("%s \n", messageEnvoi);
+            printf("le message à envoyé %s",messageEnvoi);
             ecrits = write(actuel -> id, messageEnvoi,strlen(messageEnvoi));
             switch(ecrits)
             {
@@ -181,9 +193,9 @@ void EnvoyerMessage(int socketClient, char * Message)
     strcat(messageEnvoi," a envoyé ce message à tout les membres : \n");
     strcat(messageEnvoi,"→ ");
     strcat(messageEnvoi, Message); 
-    
-    liste * actuel = utilisateurConnecter;
-    while(actuel -> suivant != NULL)
+
+    Element * actuel = utilisateurConnecter -> premier;
+    while(actuel -> suivant != NULL && liste_taille(utilisateurConnecter) > 0)
     {
         if(socketClient != actuel -> id)
         {
@@ -228,7 +240,7 @@ void reponseClient(int socketClient, char * Message)
 // renvoie si il n'existe pas 1 sinon
 int existPseudo(char * pseudo) {
     int result = 0;
-    liste * actuel = utilisateurConnecter;
+    Element * actuel = utilisateurConnecter -> premier;
     while(actuel -> suivant != NULL && result == 0)
     {
         if(strcmp(pseudo, actuel -> pseudo) == 0)
@@ -240,6 +252,55 @@ int existPseudo(char * pseudo) {
     return result;
 }
 
+
+void receptionFichier(int socketClient){
+    //1) récupération du nom de fichier
+    char * name = (char *) malloc(300*sizeof(char));
+    if(read(socketClient, name, sizeof(name)) == -1){
+        perror("[-] Erreur dans la reception du nom de fichier\n");
+        exit(-1);
+    }
+    printf("Le nom du fichier a recevoir est : %s", name);
+
+    //2) récupération de l'extension du fichier
+    char * extension = (char*)malloc(10*sizeof(char));
+    if(read(socketClient, extension, sizeof(extension)) == -1){
+        perror("[-] Erreur dans la reception de l'extension\n");
+        exit(-1);
+    }
+    printf("%s\n", extension);
+
+    //3) récupération de la taille du fichier qu'on va récupérer
+    char * taille = (char*)malloc(40*sizeof(char));
+    if(read(socketClient,taille, sizeof(int)) == -1){
+        perror("[-] Une erreur est survenu, nous n'arrivons pas à recevoir la taille du fichier que vous voulez envoyer \n");
+        exit(-1);
+    }
+    printf("La taille du message est : %s\n", taille);
+
+    //4) Récupération du contenu du fichier que l'on va créer    
+    char data[1024];
+    if(read(socketClient,data, sizeof(data)) == -1){
+        perror("[-] Une erreur est survenu, nous n'arrivons pas à recevoir le contenu du fichier\n");
+        exit(-1);
+    }
+    printf("Voila le message recu = %s\n", data);
+
+    //Création du fichier dans le dossier souhaité
+    char path[1024] = "fichiersServeur/";
+    char * filename = (char*) malloc(390 * sizeof(char));
+    strcat(filename, name);
+    strcat(filename,extension);
+    strcat(path, filename);
+
+    FILE * f = fopen(path, "w");
+
+    if(f != NULL){
+        fputs(data, f);
+        fclose(f);
+    } // fin de l'ajout
+
+}
 
 
 //fonction qui va être utilisée par un thread du serveur pour 
@@ -256,7 +317,6 @@ void * Relayer(void * SocketClient)
     {
         memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
         memset(messageRecu, 0x00, longueurMessage*sizeof(char));
-
 
         //On lit le message envoyé par le client
         lus = read(socketClient,messageRecu,longueurMessage*sizeof(char));    
@@ -282,11 +342,14 @@ void * Relayer(void * SocketClient)
                             reponseClient(socketClient, messageEnvoi);                            
                             printf("le pseudo choisit est valide!\n");
                             printf("on ajoute : %d a la file\n", socketClient);
-                            if(nombreClientConnecter == 0) utilisateurConnecter = ajouter_debut(utilisateurConnecter, socketClient,  messageRecu );
-                            else utilisateurConnecter = ajouter_debut(utilisateurConnecter,socketClient, messageRecu );
-                            printf("taille : %d \n",taille_liste(utilisateurConnecter));  
+                            char * pseudo = malloc(longueurMessage* sizeof(char));
+                            strcpy(pseudo, messageRecu);
+                            printf("on ajoute le pseudo : %s\n",pseudo);
+                            ajouter_debut(utilisateurConnecter,socketClient, pseudo);
+                            printf("taille apres l'ajout : %d \n",liste_taille(utilisateurConnecter));
+                            afficherListe(utilisateurConnecter);  
                             //une fois qu'on a réussi à connecter le client, on lance le thread qui va relayer les messages
-                            nombreClientConnecter = taille_liste(utilisateurConnecter);              
+                            nombreClientConnecter = liste_taille(utilisateurConnecter);              
                             // chaque client à son propre identifiant 
                             i++;
                         } else 
@@ -310,29 +373,31 @@ void * Relayer(void * SocketClient)
 
         if(i >= 2) 
         {
-            
             // verification de si c'est un message spécial
             // et l'envoie des données vers les clients (cf. protocole)   
             char ** separation;
+            char * message = malloc(longueurMessage*sizeof(char));
+            strcpy(message,messageRecu);
             separation = Separation(messageRecu);
         
             if(strcmp(separation[0], "/fin") == 0)
             {
                 //déconnexion côté client, on le supprime de la liste des utilisateurs connectés
                 printf("La discussion est finie avec le client numéro : %d\n", socketClient);
-                utilisateurConnecter = supprimer_val(utilisateurConnecter, socketClient);
-                close(socketClient);
-                nombreClientConnecter--;
+                supprimer_val(utilisateurConnecter, socketClient);
+                nombreClientConnecter = liste_taille(utilisateurConnecter);
+                printf("La taille actuelle après déconnexion est de : %d\n", liste_taille(utilisateurConnecter));
                 afficherListe(utilisateurConnecter);
-                printf("La taille actuelle après déconnexion est de : %d\n", nombreClientConnecter);
+                close(socketClient);
                 pthread_exit(0);
             }
             else if(strcmp(separation[0],"@") == 0)
             {
                 printf("on est dans @ case \n");
-                printf("le client %s\n",separation[1]);                
-                printf("le message %s\n", separation[2]);
+                //printf("le client %s\n",separation[1]);                
+                //printf("le message %s\n", separation[2]);
                 strcpy(messageEnvoi, separation[2]);    
+                printf("le message d'envoie est %s \n", messageEnvoi);
                 pthread_mutex_lock(&mutex);
                 EnvoyerMessageSpe(socketClient, messageEnvoi, separation[1], separation[0]);        
                 pthread_mutex_unlock(&mutex);
@@ -340,8 +405,8 @@ void * Relayer(void * SocketClient)
             else if(strcmp(separation[0],"/mp") == 0)
             {
                 printf("on est dans le message privé case \n");
-                printf("le client %s\n",separation[1]);                
-                printf("le message %s\n", separation[2]);
+                //printf("le client %s\n",separation[1]);                
+                //printf("le message %s\n", separation[2]);
                 strcpy(messageEnvoi, separation[2]);    
                 pthread_mutex_lock(&mutex);
                     EnvoyerMessageSpe(socketClient, messageEnvoi, separation[1], separation[0]);        
@@ -350,24 +415,33 @@ void * Relayer(void * SocketClient)
             else if(strcmp(separation[0],"!") == 0)
             {
                 printf("on est dans ! case \n");
-                printf("le client %s\n",separation[1]);                
-                printf("le message %s\n", separation[2]);
+                //printf("le client %s\n",separation[1]);                
+                //printf("le message %s\n", separation[2]);
                 strcpy(messageEnvoi, separation[2]);    
                 pthread_mutex_lock(&mutex);
                     EnvoyerMessageSpe(socketClient, messageEnvoi, separation[1], separation[0]);        
                 pthread_mutex_unlock(&mutex);
                 /* Urgent */
             }
-            else if(strcmp(separation[0], "file") == 0){
-                printf("On est dans le cas de réception de fichiers envoyés par le client\n");
+            else if(strcmp(separation[0],"/help") == 0)
+            {
+                printf("on est dans /help case \n");
+                //printf("le client %s\n",separation[1]);                
+                //printf("le message %s\n", separation[2]);
+                strcpy(messageEnvoi, Commandes());    
+                reponseClient(socketClient, Commandes());     
+            }
+            else if(strcmp(separation[0],"file") == 0)
+            {
+                printf("Nous avons reçu l'information que tu veux envoyer un fichier\n");
                 pthread_mutex_lock(&mutex);
-
+                    receptionFichier(socketClient);
                 pthread_mutex_unlock(&mutex);
             }
             else
             {
                 printf("on est dans default case \n");
-                strcpy(messageEnvoi,messageRecu);    
+                strcpy(messageEnvoi,message);    
                 pthread_mutex_lock(&mutex);
                     EnvoyerMessage(socketClient, messageEnvoi);        
                 pthread_mutex_unlock(&mutex);
@@ -388,7 +462,7 @@ int main(int argc, char * argv[])
     struct sockaddr_in pointDeRencontreDistant;
     int retour;
 
-    utilisateurConnecter = creer_liste();
+    utilisateurConnecter = cree_liste();
     pthread_mutex_init(&mutex, NULL);
     //  Creation des threads pour envoyer et recevoir des messages 
     pthread_t tRelay;
@@ -432,7 +506,7 @@ int main(int argc, char * argv[])
     printf("[+]Socket attached with success!\n");
 
     // maximum 5 clients dans la fille
-    if(listen(socketServeur, 5) < 0)
+    if(listen(socketServeur, 10) < 0)
     {
         perror("[-]The server can not listen");
         exit(-3);
@@ -440,7 +514,7 @@ int main(int argc, char * argv[])
     
     while(1){
         printf("[+]Serveur En Ecoute! \n");
-        printf("nombre de clients connectés %d\n", taille_liste(utilisateurConnecter));  
+        printf("nombre de clients connectés %d\n", liste_taille(utilisateurConnecter));  
         //Boucle d'attente de connexion: en théorie, un serveur attend indéfiniment
         //Dans un premier temps, il faut s'assurer qu'on a bien deux clients qui vont se connecter
         //on va d'abord rester dans cette boucle, tant que deux clients ne se sont pas bien connectés
