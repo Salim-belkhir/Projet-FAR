@@ -19,6 +19,17 @@
 // Connecté ou pas!
 int status = 0;
 
+//Pour stocker l'adresse IP, qui va etre réutilisées par le thread d'envoi de fichiers
+char * ip;
+
+char * port;
+
+char * filenameSEND;
+
+int nonRecu;
+
+
+
 // lister les commandes pour les mode de message possible
 void Commandes()
 {
@@ -114,9 +125,6 @@ void connection(int socketClient)
 }
 
 
-
-
-
 /**
  * @brief   
  * Lister les fichiers disponible dans un dossier
@@ -146,7 +154,12 @@ int listeFichierDansDos(char * dossier, char ** fichiers)
 }
 
 
-
+/**
+ * @brief 
+ * Retourne la taille d'un fichier
+ * @param filename fichier duquel on veut connaître la taille
+ * @return Un entier qui est la taille du fichier
+ */
 int tailleFile(char * filename){
     int handle;
     long taille;
@@ -157,49 +170,147 @@ int tailleFile(char * filename){
 }
 
 
+void * sendFile(void * SocketServer){
+    long socketClient2;
+
+    struct sockaddr_in servReceptionFichiersClient;
+    socklen_t longueurAdr;
+
+
+    socketClient2 = socket(PF_INET, SOCK_STREAM, 0);
+
+    if(socketClient2 < 0){
+        perror("[-] Création de la socket a échoué");
+        exit(-1);
+    }
+
+    longueurAdr = sizeof(servReceptionFichiersClient);
+    memset(&servReceptionFichiersClient, 0x00, longueurAdr);
+
+    servReceptionFichiersClient.sin_family = PF_INET;
+    servReceptionFichiersClient.sin_port =  htons(atoi(port));
+
+    inet_aton(ip, &servReceptionFichiersClient.sin_addr);
+
+    if(connect(socketClient2, (struct sockaddr *)&servReceptionFichiersClient, longueurAdr) == -1){
+        perror("connect");
+        close(socketClient2);
+        exit(-2);
+    }
+
+    //Envoi du nom du fichier
+    int writeName = write(socketClient2, filenameSEND, longueurMessage*sizeof(char));
+    switch(writeName){
+        case -1 : 
+            perror("[-] Problème rencontré dans l'envoi du fichier au serveur\n");
+            exit(-1);
+        case 0 :
+            perror("[-] La socket a été fermée par le serveur");
+            exit(-1);
+        default :
+            printf("Le nom du fichier %s a été envoyé\n", filenameSEND);
+    }
+
+    char path[longueurMessage] = "fichiersClient/";
+    strcat(path, filenameSEND); 
+
+    //on recupere maintenant la taille du fichier
+    int taille = tailleFile(path);
+    char* tailleChar =  malloc( longueurMessage*sizeof(char));
+    sprintf(tailleChar, "%d", taille);
+
+    int writeTaille = write(socketClient2, tailleChar, longueurMessage*sizeof(char));
+    //char integer[4];                 
+    //*((int*)integer) = taille;         
+    switch(writeTaille){
+        case -1 :
+            perror("[-] Problème dans l'envoi de la taille du fichier\n");
+            exit(-1);
+        case 0 :
+            perror("[-] La connexion a été fermée par le serveur\n");
+            exit(-1);
+        default :
+            printf("Taille du fichier envoyée avec succés\n");
+    } 
+
+    //On ouvre le fichier    
+    FILE * fp = fopen(path,"r");
+    
+    if (fp == NULL) {
+        perror("[-]Le fichier n'a pas pu être lu ou est introuvable ! \n");
+        exit(1);
+    }
+
+    char data[1024];
+
+    fread(data, taille, 1, fp);
+    fclose(fp);
+
+    int writeData = write(socketClient2, data, 1024);
+    switch(writeData){
+        case -1:
+            perror("[-]Erreur rencontrée dans l'envoi du contenu du fichier");
+            exit(-1);
+        case 0:
+            perror("La socket a été fermée par le serveur");
+            exit(-1);
+        default :
+            printf("Contenu du fichier bien envoyé");
+    }
+
+}
+
+
 void envoiFile(int socket, char * filename){
     //On recupere d'abord le nom du fichier
     //char * nameFile = (char*) malloc(20*sizeof(char));
     //printf("Quel fichier voulez-vous envoyer ?\n");
     //fgets(nameFile, 200*sizeof(char), stdin);
-    filename[strlen(filename)-1] = '\0';
+    //filename[strlen(filename)-1] = '\0';
 
     //Envoi du nom du fichier
-
-    int envoiNom = send(socket, filename, strlen(filename), 0);
-    if(envoiNom == -1 || envoiNom == 0){
-        perror("[-] Problème rencontré dans l'envoi du fichier au serveur\n");
-        exit(-1);
+    int writeName = write(socket, filename, longueurMessage*sizeof(char));
+    switch(writeName){
+        case -1 : 
+            perror("[-] Problème rencontré dans l'envoi du fichier au serveur\n");
+            exit(-1);
+        case 0 :
+            perror("[-] La socket a été fermée par le serveur");
+            exit(-1);
+        default :
+            printf("Le nom du fichier %s a été envoyé\n", filename);
     }
 
-    printf("Le nom du fichier est : %s\n", filename);
-    char path[256] = "fichiersClient/";
+    char path[longueurMessage] = "fichiersClient/";
     strcat(path, filename); 
+
     //on recupere maintenant la taille du fichier
-    printf("path est %s \n", path);
     int taille = tailleFile(path);
-    char* tailleChar =  malloc( 256*sizeof(char));
+    char* tailleChar =  malloc( longueurMessage*sizeof(char));
     sprintf(tailleChar, "%d", taille);
 
+    int writeTaille = write(socket, tailleChar, longueurMessage*sizeof(char));
     //char integer[4];                 
     //*((int*)integer) = taille;         
-    if(send(socket, tailleChar, sizeof(int), 0) == -1){
-        perror("[-] Problème dans l'envoi de la taille du fichier\n");
-        exit(-1);
+    switch(writeTaille){
+        case -1 :
+            perror("[-] Problème dans l'envoi de la taille du fichier\n");
+            exit(-1);
+        case 0 :
+            perror("[-] La connexion a été fermée par le serveur\n");
+            exit(-1);
+        default :
+            printf("Taille du fichier envoyée avec succés\n");
     } 
     //int t = (long) integer;
     
 
     //char * chaineTaille = itoa(taille);
-    printf("La taille est : %d\n", taille);
     /*int envoiTaille = write(socket, chaineTaille, sizeof(taille));
     if(envoiTaille == -1 || envoiTaille == 0){
         perror("Echec dans l'envoi de la du fichier");
         exit(-1);
     }*/
-
-    printf("La taille du fichier est : %ld\n", strlen(filename));
-
     //On ouvre le fichier
 
     
@@ -215,7 +326,17 @@ void envoiFile(int socket, char * filename){
     fread(data, taille, 1, fp);
     fclose(fp);
 
-    int sent = send(socket, data, taille, 0);
+    int writeData = write(socket, data, 1024);
+    switch(writeData){
+        case -1:
+            perror("[-]Erreur rencontrée dans l'envoi du contenu du fichier");
+            exit(-1);
+        case 0:
+            perror("La socket a été fermée par le serveur");
+            exit(-1);
+        default :
+            printf("Contenu du fichier bien envoyé");
+    }
 }
 
 
@@ -240,22 +361,32 @@ void * Envoyer(void * socketClient)
         {
             char ** fichiers = malloc(256*sizeof(char));
             int i , nombreFichiers, fichiersTrouver;
-            memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));   
+            char fichierChoisi[longueurMessage];
+            memset(fichierChoisi, 0x00, longueurMessage*sizeof(char));   
             nombreFichiers = listeFichierDansDos("fichiersClient", fichiers);
             fichiersTrouver = 0;
             while(fichiersTrouver == 0){
                 puts("\n☼☼☼ Choisissez un fichier ☼☼☼");
                 printf("→ ");
-                fgets(messageEnvoi, longueurMessage*sizeof(char),stdin);
-                messageEnvoi[strlen(messageEnvoi) - 1]=0;
+                fgets(fichierChoisi, longueurMessage*sizeof(char),stdin);
+                fichierChoisi[strlen(fichierChoisi) - 1]=0;
                 for(i=0;i<nombreFichiers;i++)
                 {     
-                    if(strcmp(messageEnvoi,fichiers[i]) == 0)
-                    {
-                        printf("Le fichier %s existe bien !\n",messageEnvoi);
+                    if(strcmp(fichierChoisi,fichiers[i]) == 0)
+                    {   
+
+                        nonRecu = 1;
+                        if(write(socket, messageEnvoi, strlen(messageEnvoi)) == -1){
+                            perror("[-] Problème dans l'envoi du message 'file'");
+                            exit(-1);
+                        }
+                        printf("Le message suivant a bien été envoyé : %s\n", messageEnvoi);
+                        printf("Le fichier %s existe bien !\n",fichierChoisi);
                         fichiersTrouver = 1;
-                        
-                        envoiFile(socket , messageEnvoi);
+                        filenameSEND = fichierChoisi;
+                        while(nonRecu){  }
+                        pthread_t send;
+                        pthread_create(&send, NULL, sendFile, NULL);
                     }
                 }
                 if(fichiersTrouver == 0)
@@ -269,7 +400,7 @@ void * Envoyer(void * socketClient)
             switch(ecrits)
             {
                 case -1: 
-                    perror("write");
+                    perror("[-] Erreur dans l'envoi");
                     close(socket);
                     exit(-3);
                 case 0:
@@ -289,6 +420,10 @@ void * Envoyer(void * socketClient)
     }
     pthread_exit(0);
 }
+
+
+
+
 
 
 //fonction qui va servir au thread 
@@ -314,14 +449,29 @@ void * Recevoir(void * socketClient)
                 close(socket);
                 exit(-5);
             default:
-                //puts(messageRecu);
-                printf("\n");
-                //printf("%s \n", messageRecu);
-                puts(messageRecu);
-                // On a fini d'afficher le message recu on affiche la demande d'envoie
-                puts("\n☼☼☼ Envoyer Un Message ☼☼☼");
-                puts("→ ");
-                
+                if(strcmp(messageRecu, "port") == 0){
+                    int rcvPort = read(socket, port, longueurMessage*sizeof(char));
+                    switch(rcvPort){
+                        case -1:
+                            perror("[-] Problème de reception du port sur lequel l'envoi du fichier va se faire\n");
+                            exit(-1);
+                        case 0:
+                            perror("[-] La socket a été fermée par le serveur !\n");
+                            exit(-1);
+                        default:
+                            printf("Reception du numero de port réussi avec succés %s ! \n", port);
+                            nonRecu = 0;
+                    }
+                }
+                else{
+                    //puts(messageRecu);
+                    printf("\n");
+                    //printf("%s \n", messageRecu);
+                    puts(messageRecu);
+                    // On a fini d'afficher le message recu on affiche la demande d'envoie
+                    puts("\n☼☼☼ Envoyer Un Message ☼☼☼");
+                    puts("→ ");
+                }                
         }
     }
     pthread_exit(0);   
@@ -329,6 +479,8 @@ void * Recevoir(void * socketClient)
 
 int main(int argc, char *argv[]) 
 {
+    ip = argv[1];
+    port = argv[2];
     long socketClient;
     struct sockaddr_in pointDeRencontreDistant;
     socklen_t longueurAdresse;
