@@ -17,4 +17,8 @@ Liste des commandes
 
 file
 choose a file to send to the server and save it
+
+Consulter les fichiers disponibles côté Serveur
+/files
+
 ===================================================

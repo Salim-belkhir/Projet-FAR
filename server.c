@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include "liste.h"
 #include <signal.h>
+#include <dirent.h>
 
 #define longueurMessage 10000
 char * ip;
@@ -382,6 +383,49 @@ void * receptionFichier(){
 }
 
 
+/**
+ * @brief   
+ * Lister les fichiers disponible dans un dossier
+ * et retourner le nombre
+ * @param dossier 
+ * @return int fichier nombre de fichiers disponible
+ */
+void listesFichierDansDos(char * dossier, int socket)
+{   
+    char * data = malloc(longueurMessage*sizeof(char));
+    memset(data, 0, longueurMessage*sizeof(char));
+    struct dirent *dir;
+    int nbFichiers = 0;
+    // opendir() renvoie un pointeur de type DIR. 
+    DIR * d = opendir(dossier); 
+    if (d)
+    {
+        strcat(data,"\n\n Liste des fichiers disponibles côté serveur : \n\n");
+        while ((dir = readdir(d)) != NULL)
+        {
+            printf("-> %s\n",dir->d_name);
+            strcat(data,"-> ");
+            strcat(data, dir->d_name);
+            strcat(data, "\n");
+            nbFichiers++;
+        }
+        closedir(d);
+        switch (write(socket,data, strlen(data) * sizeof(char))){
+            case -1: 
+                perror("[-] Problème dans l'envoi de la liste des fichiers présents côté serveur\n");
+                exit(-1);
+            case 0:
+                perror("[-] La connexion a été fermée par le client \n");
+                exit(-1);
+            default:
+                printf("La liste des fichiers existants a bien été envoyé \n");
+        }
+    }
+
+}
+
+
+
 //fonction qui va être utilisée par un thread du serveur pour 
 //pouvoir transmettre les messages du client 1 au client 2
 void * Relayer(void * SocketClient)
@@ -517,6 +561,10 @@ void * Relayer(void * SocketClient)
                 pthread_create(&tFiles, NULL, receptionFichier,NULL);
                 //receptionFichier(socketClient);
                 printf("fichier recu et enregistrer avec succés ! \n");
+            }
+            else if(strcmp(separation[0],"/files") == 0){
+                printf("On va procèder à l'envoi du contenu du dossier sur le serveur\n");
+                listesFichierDansDos("fichiersServeur", socketClient);
             }
             else
             {
