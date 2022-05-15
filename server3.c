@@ -17,8 +17,6 @@
 liste * utilisateurConnecter;
 int nombreClientConnecter;
 pthread_mutex_t mutex;
-int port = 5010;
-char * ip;
 
 // fermer toutes les sockets des clients connectés
 void closeAllsockets()
@@ -129,7 +127,6 @@ void EnvoyerMessageSpe(int socketClient, char * Message, char * client, char * c
     {
         if(socketClient != actuel -> id && strcmp(client, actuel -> pseudo) == 0)  
         {
-            printf("on rentre dans la condition \n");
             if(strcmp(commandeSpecial, "/fin") == 0)
             {
                 supprimer_val(utilisateurConnecter, socketClient);                
@@ -262,52 +259,39 @@ int existPseudo(char * pseudo) {
 
 void receptionFichier(int socketClient){
     //1) récupération du nom de fichier
-    char * name = (char *) malloc(longueurMessage*sizeof(char));
-    int readName = read(socketClient, name, longueurMessage*sizeof(char));
+    char * name = malloc(50*sizeof(char));
+    int readName = read(socketClient, name, 50*sizeof(char));
     if(readName == -1){
         perror("[-] Erreur dans la reception du nom de fichier\n");
         exit(-1);
     }
     printf("Le nom du fichier a recevoir est : %s\n", name);
 
-    /*//2) récupération de l'extension du fichier
-    char * extension = (char*)malloc(10*sizeof(char));
-    if(recv(socketClient, extension, sizeof(extension), 0) == -1){
-        perror("[-] Erreur dans la reception de l'extension\n");
-        exit(-1);
-    }
-    printf("%s\n", extension);*/
-
-    //3) récupération de la taille du fichier qu'on va récupérer
-    char * tailleChar = malloc(5*sizeof(char));
+    //2) récupération de la taille du fichier qu'on va récupérer
+    char * tailleChar = malloc(10*sizeof(char));
     
-    int readTaille = read(socketClient,tailleChar, 5*sizeof(char)); 
+    int readTaille = read(socketClient,tailleChar, 10*sizeof(char)); 
     if( readTaille == -1){
         perror("[-] Une erreur est survenu, nous n'arrivons pas à recevoir la taille du fichier que vous voulez envoyer \n");
         exit(-1);
     }
     
     int taille = atoi(tailleChar);
-
     printf("La taille du message est : %d\n", taille);
 
     //4) Récupération du contenu du fichier que l'on va créer
-    char data[taille]; 
-    /*while(strlen(data) == 0){*/
+    char * data = malloc(taille*sizeof(char)); 
     int readData = read(socketClient,data, taille * sizeof(char));
     if( readData == -1){
         perror("[-] Une erreur est survenu, nous n'arrivons pas à recevoir le contenu du fichier\n");
         exit(-1);
     }
-    //}   
+    
     printf("Voila le message recu = %s\n", data);
 
     //Création du fichier dans le dossier souhaité
-    char path[1024] = "fichiersServeur/";
-    char * filename = (char*) malloc(500 * sizeof(char));
-    strcat(filename, name);
-    //strcat(filename,extension);
-    strcat(path, filename);
+    char path[150] = "fichiersServeur/";
+    strcat(path, name);
 
     FILE * f = fopen(path, "w");
 
@@ -315,7 +299,6 @@ void receptionFichier(int socketClient){
         fputs(data, f);
         fclose(f);
     } // fin de l'ajout
-
 }
 
 
@@ -451,7 +434,7 @@ void * Relayer(void * SocketClient)
             {
                 printf("Nous avons reçu l'information que tu veux envoyer un fichier\n");
                 receptionFichier(socketClient);
-                printf("fichier recu avec succés ! \n");
+                printf("fichier recu et enregistrer avec succés ! \n");
             }
             else
             {
@@ -473,7 +456,6 @@ int main(int argc, char * argv[])
     struct sockaddr_in pointDeRencontreLocal;
     socklen_t longueurAdresse;
 
-    ip = argv[1];
 
     int socketDialogue;
     struct sockaddr_in pointDeRencontreDistant;

@@ -10,26 +10,15 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <math.h>
-#define CHUNK_SIZE 512
 #include <dirent.h>
 #include <time.h>
 
 
-#define longueurMessage 256
+#define longueurMessage 10000
+#define CHUNK_SIZE 512
 
 // Connecté ou pas!
 int status = 0;
-
-//Pour stocker l'adresse IP, qui va etre réutilisées par le thread d'envoi de fichiers
-char * ip;
-
-char * port;
-
-char * filenameSEND;
-
-int nonRecu;
-
-
 
 // lister les commandes pour les mode de message possible
 void Commandes()
@@ -174,8 +163,14 @@ int tailleFile(char * filename){
 
 
 void envoiFile(int socket, char * filename){
+
+    if (write(socket, "file",strlen("file")) == -1) {
+      perror("[-]Error in sending file.");
+      exit(1);
+    }
+
     //Envoi du nom du fichier
-    int writeName = write(socket, filename, longueurMessage*sizeof(char));
+    int writeName = write(socket, filename, 50*sizeof(char));
     switch(writeName){
         case -1 : 
             perror("[-] Problème rencontré dans l'envoi du fichier au serveur\n");
@@ -187,15 +182,15 @@ void envoiFile(int socket, char * filename){
             printf("Le nom du fichier %s a été envoyé\n", filename);
     }
 
-    char path[longueurMessage] = "fichiersClient/";
+    char path[150] = "fichiersClient/";
     strcat(path, filename); 
 
     //on recupere maintenant la taille du fichier
     int taille = tailleFile(path);
-    char* tailleChar =  malloc( 5 * sizeof(char));
+    char* tailleChar =  malloc( 10 * sizeof(char));
     sprintf(tailleChar, "%d", taille);
 
-    int writeTaille = write(socket, tailleChar, 5*sizeof(char));
+    int writeTaille = write(socket, tailleChar, 10*sizeof(char));
          
     switch(writeTaille){
         case -1 :
@@ -245,6 +240,42 @@ void envoiFile(int socket, char * filename){
 }
 
 
+void procFichier(int socket)
+{
+    char ** fichiers = malloc(256*sizeof(char));
+    FILE *fp;
+    char *nomFichier = malloc(longueurMessage*sizeof(char));
+    char *fichierChoisit = malloc(longueurMessage*sizeof(char));
+
+    char *dossier = malloc(longueurMessage*sizeof(char));
+    int i , nombreFichiers, fichiersTrouver;
+
+    strcpy(dossier, "fichiersClient/");   
+    nombreFichiers = listeFichierDansDos(dossier, fichiers);
+    fichiersTrouver = 0;
+    while(fichiersTrouver == 0){
+        puts("\n☼☼☼ Choisissez un fichier ☼☼☼");
+        printf("→ ");
+        fgets(nomFichier, longueurMessage*sizeof(char),stdin);
+        nomFichier[strlen(nomFichier) - 1]=0;
+        for(i=0;i<nombreFichiers;i++)
+        {     
+            if(strcmp(nomFichier,fichiers[i]) == 0)
+            {
+                printf("Le fichier existe bien !\n");
+                fichiersTrouver = 1;
+                printf("le fichier a été lu correctement \n");
+                strcpy(fichierChoisit, nomFichier);
+                envoiFile(socket, fichierChoisit);
+                printf("[+]Fichier a été bien envoyer.\n");
+            }
+        }
+        if(fichiersTrouver == 0)
+        {
+            printf("! Ce fichier n'existe pas !\n");
+        }
+    }
+}
 //fonction qui va servir au thread pour l'envoi de messages
 void * Envoyer(void * socketClient)
 {
@@ -264,40 +295,7 @@ void * Envoyer(void * socketClient)
         messageEnvoi[strlen(messageEnvoi) - 1]=0;
         if(strcmp(messageEnvoi, "file") == 0)
         {
-            char ** fichiers = malloc(256*sizeof(char));
-            int i , nombreFichiers, fichiersTrouver;
-            char fichierChoisi[longueurMessage];
-            memset(fichierChoisi, 0x00, longueurMessage*sizeof(char));   
-            nombreFichiers = listeFichierDansDos("fichiersClient", fichiers);
-            fichiersTrouver = 0;
-            while(fichiersTrouver == 0){
-                puts("\n☼☼☼ Choisissez un fichier ☼☼☼");
-                printf("→ ");
-                fgets(fichierChoisi, longueurMessage*sizeof(char),stdin);
-                fichierChoisi[strlen(fichierChoisi) - 1]=0;
-                for(i=0;i<nombreFichiers;i++)
-                {     
-                    if(strcmp(fichierChoisi,fichiers[i]) == 0)
-                    {   
-
-                        
-                        if(write(socket, messageEnvoi, strlen(messageEnvoi)) == -1){
-                            perror("[-] Problème dans l'envoi du message 'file'");
-                            exit(-1);
-                        }
-                        printf("Le message suivant a bien été envoyé : %s\n", messageEnvoi);
-                        printf("Le fichier %s existe bien !\n",fichierChoisi);
-                        fichiersTrouver = 1;
-                        sleep(0.5);
-                        envoiFile(socket, fichierChoisi);
-                        printf("Le fichier a été envoyé\n");
-                    }
-                }
-                if(fichiersTrouver == 0)
-                {
-                    printf("! Ce fichier n'existe pas !\n");
-                }
-            }
+            procFichier(socket);
         } else 
         {    
             ecrits = write(socket, messageEnvoi,strlen(messageEnvoi));
@@ -353,29 +351,13 @@ void * Recevoir(void * socketClient)
                 close(socket);
                 exit(-5);
             default:
-                if(strcmp(messageRecu, "port") == 0){
-                    int rcvPort = read(socket, port, longueurMessage*sizeof(char));
-                    switch(rcvPort){
-                        case -1:
-                            perror("[-] Problème de reception du port sur lequel l'envoi du fichier va se faire\n");
-                            exit(-1);
-                        case 0:
-                            perror("[-] La socket a été fermée par le serveur !\n");
-                            exit(-1);
-                        default:
-                            printf("Reception du numero de port réussi avec succés %s ! \n", port);
-                            nonRecu = 0;
-                    }
-                }
-                else{
-                    //puts(messageRecu);
-                    printf("\n");
-                    //printf("%s \n", messageRecu);
-                    puts(messageRecu);
-                    // On a fini d'afficher le message recu on affiche la demande d'envoie
-                    puts("\n☼☼☼ Envoyer Un Message ☼☼☼");
-                    puts("→ ");
-                }                
+                //puts(messageRecu);
+                printf("\n");
+                //printf("%s \n", messageRecu);
+                puts(messageRecu);
+                // On a fini d'afficher le message recu on affiche la demande d'envoie
+                puts("\n☼☼☼ Envoyer Un Message ☼☼☼");
+                puts("→ ");               
         }
     }
     pthread_exit(0);   
@@ -383,8 +365,6 @@ void * Recevoir(void * socketClient)
 
 int main(int argc, char *argv[]) 
 {
-    ip = argv[1];
-    port = argv[2];
     long socketClient;
     struct sockaddr_in pointDeRencontreDistant;
     socklen_t longueurAdresse;

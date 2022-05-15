@@ -18,6 +18,32 @@ liste * utilisateurConnecter;
 int nombreClientConnecter;
 pthread_mutex_t mutex;
 
+/**
+ * @brief 
+ * Create a new file.
+ * Receives the data from the client.
+ * Write the data into the file
+ * @param sockfd 
+ */
+void write_file(int sockfd){
+  int n;
+  FILE *fp;
+  char *filename = "recv.txt";
+  char buffer[longueurMessage];
+ 
+  fp = fopen(filename, "w");
+  while (1) {
+    n = recv(sockfd, buffer, longueurMessage, 0);
+    if (n <= 0){
+      break;
+      return;
+    }
+    fprintf(fp, "%s", buffer);
+    bzero(buffer, longueurMessage);
+  }
+  return;
+}
+
 // fermer toutes les sockets des clients connectés
 void closeAllsockets()
 {
@@ -380,6 +406,10 @@ void * Relayer(void * SocketClient)
                 strcpy(messageEnvoi, Commandes());    
                 reponseClient(socketClient, Commandes());     
             }
+            else if(strcmp(separation[0], "file") == 0)
+            {
+                printf("on est file case \n");
+            }
             else
             {
                 printf("on est dans default case \n");
@@ -403,7 +433,7 @@ int main(int argc, char * argv[])
     int socketDialogue;
     struct sockaddr_in pointDeRencontreDistant;
     int retour;
-
+    
     utilisateurConnecter = cree_liste();
     pthread_mutex_init(&mutex, NULL);
     //  Creation des threads pour envoyer et recevoir des messages 
@@ -470,6 +500,11 @@ int main(int argc, char * argv[])
             close(socketServeur);
             exit(-4);
         }
+        /*
+        char buffer[longueurMessage];
+        write_file(socketDialogue);
+        printf("[+]Data written in the file successfully.\n");
+        */
 
         //printf("on ajoute : %d a la file\n", socketDialogue);
         //identifierClient = socketDialogue;

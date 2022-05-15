@@ -24,3 +24,6 @@ make executeServer
 on peut crée un serveur pour faire les testes avec     
 nc -l -p 5000   
 5000 : c'est le numéro du port  
+
+
+V1 : seveur3 et client6
