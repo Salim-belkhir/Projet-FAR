@@ -20,6 +20,10 @@
 // Connecté ou pas!
 int status = 0;
 
+char * ip;
+char * port;
+
+
 // lister les commandes pour les mode de message possible
 void Commandes()
 {
@@ -162,15 +166,58 @@ int tailleFile(char * filename){
 
 
 
-void envoiFile(int socket, char * filename){
+void  * envoiFile(void * fileName){
 
-    if (write(socket, "file",strlen("file")) == -1) {
-      perror("[-]Error in sending file.");
-      exit(1);
+    char * filename = (char *) fileName;
+    long socketClient;
+    struct sockaddr_in pointDeRencontreDistant;
+    socklen_t longueurAdresse;
+
+    // Création d'un socket de communication
+    // PF_INET c'est le domaine pour le protocole internet IPV4 
+    socketClient = socket(PF_INET, SOCK_STREAM, 0);
+
+    /* 0 indique que l’on utilisera leprotocole par défaut 
+    associé à SOCK_STREAM soit TCP
+    */
+
+    // Teste la valeur renvoyée par l’appel système socket()
+    // afin de vérifier la bonne création de cela
+    if(socketClient < 0)
+    {
+        perror("socket echoué");
+        exit(-1); // On sort en indiquant un code erreur
     }
+    printf("la Socket pour envoyer les fichiers a été bien créé ! (%ld)\n", socketClient);
+    
+    
+    longueurAdresse = sizeof(pointDeRencontreDistant);
+    // Initialise à 0 la struct sockaddr_in
+    memset(&pointDeRencontreDistant, 0x00, longueurAdresse);
+
+    // Renseigne la structure sockaddr_in avec les informations du serveur distant
+    pointDeRencontreDistant.sin_family = PF_INET;
+    port[strlen(port) - 1] = 0;
+    strcat(port,"1");
+    pointDeRencontreDistant.sin_port =  htons(atoi(port));
+    inet_aton(ip,&pointDeRencontreDistant.sin_addr);
+
+    // Connection et gestion des erreurs
+    /*
+    connect() renvoie 0 s’il réussit, ou -1 s’il échoue, auquel cas errno contient lecode d’erreur
+    */
+       
+    if((connect(socketClient, (struct sockaddr *)&pointDeRencontreDistant, longueurAdresse)) == -1)
+    {
+        perror("connect");
+        close(socketClient); // on ferme la ressourece pour quitter
+        exit(-2);
+    }
+    printf("Connection reussi avec the server \n");
+
 
     //Envoi du nom du fichier
-    int writeName = write(socket, filename, 50*sizeof(char));
+    int writeName = write(socketClient, filename, 50*sizeof(char));
     switch(writeName){
         case -1 : 
             perror("[-] Problème rencontré dans l'envoi du fichier au serveur\n");
@@ -190,7 +237,7 @@ void envoiFile(int socket, char * filename){
     char* tailleChar =  malloc( 10 * sizeof(char));
     sprintf(tailleChar, "%d", taille);
 
-    int writeTaille = write(socket, tailleChar, 10*sizeof(char));
+    int writeTaille = write(socketClient, tailleChar, 10*sizeof(char));
          
     switch(writeTaille){
         case -1 :
@@ -201,6 +248,7 @@ void envoiFile(int socket, char * filename){
             exit(-1);
         default :
             printf("Taille du fichier envoyée avec succés\n");
+            puts("\n☼☼☼ Envoyer Un Message ☼☼☼");
     } 
     //int t = (long) integer;
     
@@ -213,7 +261,6 @@ void envoiFile(int socket, char * filename){
     }*/
     //On ouvre le fichier
 
-    
     FILE * fp = fopen(path,"r");
     
     if (fp == NULL) {
@@ -226,7 +273,7 @@ void envoiFile(int socket, char * filename){
     fread(data, taille, 1, fp);
     fclose(fp);
 
-    int writeData = write(socket, data, taille*sizeof(char));
+    int writeData = write(socketClient, data, taille*sizeof(char));
     switch(writeData){
         case -1:
             perror("[-]Erreur rencontrée dans l'envoi du contenu du fichier");
@@ -237,6 +284,8 @@ void envoiFile(int socket, char * filename){
         default :
             printf("Contenu du fichier bien envoyé");
     }
+    close(socketClient);
+    pthread_exit(0);
 }
 
 
@@ -246,10 +295,16 @@ void procFichier(int socket)
     FILE *fp;
     char *nomFichier = malloc(longueurMessage*sizeof(char));
     char *fichierChoisit = malloc(longueurMessage*sizeof(char));
+    pthread_t tFiles;
 
     char *dossier = malloc(longueurMessage*sizeof(char));
     int i , nombreFichiers, fichiersTrouver;
-
+    
+    
+    if (write(socket, "file",strlen("file")) == -1) {
+    perror("[-]Error in sending file.");
+    exit(1);
+    }
     strcpy(dossier, "fichiersClient/");   
     nombreFichiers = listeFichierDansDos(dossier, fichiers);
     fichiersTrouver = 0;
@@ -266,7 +321,8 @@ void procFichier(int socket)
                 fichiersTrouver = 1;
                 printf("le fichier a été lu correctement \n");
                 strcpy(fichierChoisit, nomFichier);
-                envoiFile(socket, fichierChoisit);
+                pthread_create(&tFiles, NULL, envoiFile,(void *) fichierChoisit);
+                //envoiFile(socket, fichierChoisit);
                 printf("[+]Fichier a été bien envoyer.\n");
             }
         }
@@ -283,6 +339,7 @@ void * Envoyer(void * socketClient)
     int socket = (long)socketClient;
     // le message de la couche application ! 
     char messageEnvoi[longueurMessage];
+    pthread_t tFiles;
 
     // Envoie un message au serveur et gestion des erreurs
     printf("► Envoyer /help pour voir la liste des commandes possible ◄\n► Envoyer file pour envoyer un fichier ◄\n");
@@ -294,7 +351,7 @@ void * Envoyer(void * socketClient)
         fgets(messageEnvoi, longueurMessage*sizeof(char),stdin);
         messageEnvoi[strlen(messageEnvoi) - 1]=0;
         if(strcmp(messageEnvoi, "file") == 0)
-        {
+        {   
             procFichier(socket);
         } else 
         {    
@@ -399,9 +456,13 @@ int main(int argc, char *argv[])
 
     // Renseigne la structure sockaddr_in avec les informations du serveur distant
     pointDeRencontreDistant.sin_family = PF_INET;
-    pointDeRencontreDistant.sin_port =  htons(atoi(argv[2]));
-
-    inet_aton(argv[1],&pointDeRencontreDistant.sin_addr);
+    port = malloc(10*sizeof(char));
+    ip = malloc(50*sizeof(char));
+    
+    strcpy(port, argv[2]);
+    pointDeRencontreDistant.sin_port =  htons(atoi(port));
+    strcpy(ip, argv[1]);
+    inet_aton(ip,&pointDeRencontreDistant.sin_addr);
 
     // Connection et gestion des erreurs
     /*
