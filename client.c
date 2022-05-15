@@ -21,8 +21,7 @@
 int status = 0;
 
 char * ip;
-char * port;
-
+int port;
 
 // lister les commandes pour les mode de message possible
 void Commandes()
@@ -197,9 +196,8 @@ void  * envoiFile(void * fileName){
 
     // Renseigne la structure sockaddr_in avec les informations du serveur distant
     pointDeRencontreDistant.sin_family = PF_INET;
-    port[strlen(port) - 1] = 0;
-    strcat(port,"1");
-    pointDeRencontreDistant.sin_port =  htons(atoi(port));
+    port++;
+    pointDeRencontreDistant.sin_port =  htons(port);
     inet_aton(ip,&pointDeRencontreDistant.sin_addr);
 
     // Connection et gestion des erreurs
@@ -456,11 +454,10 @@ int main(int argc, char *argv[])
 
     // Renseigne la structure sockaddr_in avec les informations du serveur distant
     pointDeRencontreDistant.sin_family = PF_INET;
-    port = malloc(10*sizeof(char));
     ip = malloc(50*sizeof(char));
     
-    strcpy(port, argv[2]);
-    pointDeRencontreDistant.sin_port =  htons(atoi(port));
+    port = atoi(argv[2]);
+    pointDeRencontreDistant.sin_port =  htons(port);
     strcpy(ip, argv[1]);
     inet_aton(ip,&pointDeRencontreDistant.sin_addr);
 

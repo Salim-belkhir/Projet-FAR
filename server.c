@@ -12,7 +12,7 @@
 
 #define longueurMessage 10000
 char * ip;
-char * port;
+int port;
 
 // liste contenant les socket des  clients à relayer 
 // si socket == -1 → pas connecté
@@ -297,9 +297,8 @@ void * receptionFichier(){
     // Toutes les interfaces
     pointDeRencontreLocal.sin_addr.s_addr = htonl(INADDR_ANY);
     
-    port[strlen(port) - 1] = 0;
-    strcat(port,"1");
-    pointDeRencontreLocal.sin_port =  htons(atoi(port));
+    port++;
+    pointDeRencontreLocal.sin_port =  htons(port);
 
 
     inet_aton(ip,&pointDeRencontreLocal.sin_addr);
@@ -574,9 +573,10 @@ int main(int argc, char * argv[])
     pointDeRencontreLocal.sin_family = PF_INET;
     // Toutes les interfaces
     pointDeRencontreLocal.sin_addr.s_addr = htonl(INADDR_ANY);
-    port = malloc(10*sizeof(char));
-    strcpy(port, argv[2]); 
-    pointDeRencontreLocal.sin_port =  htons(atoi(port));
+
+    port = atoi(argv[2]);
+    
+    pointDeRencontreLocal.sin_port =  htons(port);
     ip = malloc(50*sizeof(char));
     strcpy(ip, argv[1]);
     inet_aton(ip,&pointDeRencontreLocal.sin_addr);
