@@ -5,7 +5,7 @@ hostname :
 	hostname -I
 executeServer :
 	./server $(adresseIp) 5000
-client4 : client4.c
-	gcc -o client4 client4.c -lpthread
+client : client.c
+	gcc -o client client.c -lpthread
 executeClient : 
-	./client4 $(adresseIp) 5000
+	./client $(adresseIp) 5000

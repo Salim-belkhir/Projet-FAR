@@ -11,38 +11,14 @@
 #include <signal.h>
 
 #define longueurMessage 10000
+char * ip;
+char * port;
 
 // liste contenant les socket des  clients à relayer 
 // si socket == -1 → pas connecté
 liste * utilisateurConnecter;
 int nombreClientConnecter;
 pthread_mutex_t mutex;
-
-/**
- * @brief 
- * Create a new file.
- * Receives the data from the client.
- * Write the data into the file
- * @param sockfd 
- */
-void write_file(int sockfd){
-  int n;
-  FILE *fp;
-  char *filename = "recv.txt";
-  char buffer[longueurMessage];
- 
-  fp = fopen(filename, "w");
-  while (1) {
-    n = recv(sockfd, buffer, longueurMessage, 0);
-    if (n <= 0){
-      break;
-      return;
-    }
-    fprintf(fp, "%s", buffer);
-    bzero(buffer, longueurMessage);
-  }
-  return;
-}
 
 // fermer toutes les sockets des clients connectés
 void closeAllsockets()
@@ -153,7 +129,6 @@ void EnvoyerMessageSpe(int socketClient, char * Message, char * client, char * c
     {
         if(socketClient != actuel -> id && strcmp(client, actuel -> pseudo) == 0)  
         {
-            printf("on rentre dans la condition \n");
             if(strcmp(commandeSpecial, "/fin") == 0)
             {
                 supprimer_val(utilisateurConnecter, socketClient);                
@@ -243,6 +218,8 @@ void EnvoyerMessage(int socketClient, char * Message)
     }
 }
 
+
+
 void reponseClient(int socketClient, char * Message)
 {
     int ecrits;
@@ -262,6 +239,8 @@ void reponseClient(int socketClient, char * Message)
 } 
  
 
+
+
 // La fonction vérifie si un pseudo est disponible donc aucun client ne la choisit avant
 // renvoie si il n'existe pas 1 sinon
 int existPseudo(char * pseudo) {
@@ -277,6 +256,132 @@ int existPseudo(char * pseudo) {
     }
     return result;
 }
+
+
+
+void * receptionFichier(){
+    int socketServeur;
+    struct sockaddr_in pointDeRencontreLocal;
+    socklen_t longueurAdresse;
+
+
+    int socketDialogue;
+    struct sockaddr_in pointDeRencontreDistant;
+    int retour;
+
+    //  Creation des threads pour envoyer et recevoir des messages 
+
+    // Création d'un socket de communication
+    // PF_INET c'est le domaine pour le protocole internet IPV4 
+    socketServeur = socket(PF_INET, SOCK_STREAM, 0);
+    /* 0 indique que l’on utilisera le protocole par défaut 
+    associé à SOCK_STREAM soit TCP
+    */
+
+    // Teste la valeur renvoyée par l’appel système socket()
+    // afin de vérifier la bonne création de cela
+    if(socketServeur < 0)
+    {
+        perror("[-]Socket not created");
+        exit(-1); // On sort en indiquant un code erreur
+    }
+    printf("[+]Socket created successfully ! (%d)\n", socketServeur);
+    
+    longueurAdresse = sizeof(pointDeRencontreLocal);
+
+    // Initialise à 0 la struct sockaddr_in
+    memset(&pointDeRencontreLocal, 0x00, longueurAdresse);
+
+    // Renseigne la structure sockaddr_in avec les informations du serveur distant
+    pointDeRencontreLocal.sin_family = PF_INET;
+    // Toutes les interfaces
+    pointDeRencontreLocal.sin_addr.s_addr = htonl(INADDR_ANY);
+    
+    port[strlen(port) - 1] = 0;
+    strcat(port,"1");
+    pointDeRencontreLocal.sin_port =  htons(atoi(port));
+
+
+    inet_aton(ip,&pointDeRencontreLocal.sin_addr);
+    
+    // On demande l'attachement local de la socket 
+    if((bind(socketServeur,(struct sockaddr *)&pointDeRencontreLocal, longueurAdresse)) < 0)
+    {
+        perror("[-]Problem of binding");
+        exit(-2);
+    }
+
+    printf("[+]Socket attached with success!\n");
+
+    // maximum 5 clients dans la fille
+    if(listen(socketServeur, 10) < 0)
+    {
+        perror("[-]The server can not listen");
+        exit(-3);
+    }
+    
+    printf("[+]Serveur En Ecoute! \n");
+    //Boucle d'attente de connexion: en théorie, un serveur attend indéfiniment
+    //Dans un premier temps, il faut s'assurer qu'on a bien deux clients qui vont se connecter
+    //on va d'abord rester dans cette boucle, tant que deux clients ne se sont pas bien connectés
+    printf("Attente d'une demande de connexion (quitter avec Ctrl-C) \n\n");
+    // c'est un appel bloquant 
+    socketDialogue = accept(socketServeur, (struct sockaddr *)&pointDeRencontreDistant, &longueurAdresse);
+    if(socketDialogue < 0)
+    {
+        perror("[-]We can not connect the client");
+        close(socketDialogue);
+        close(socketServeur);
+        exit(-4);
+    }
+    printf("On a reussi a connecter le cient \n");
+ 
+    //1) récupération du nom de fichier
+    char * name = malloc(50*sizeof(char));
+    int readName = read(socketDialogue, name, 50*sizeof(char));
+    if(readName == -1){
+        perror("[-] Erreur dans la reception du nom de fichier\n");
+        exit(-1);
+    }
+    printf("Le nom du fichier a recevoir est : %s\n", name);
+
+    //2) récupération de la taille du fichier qu'on va récupérer
+    char * tailleChar = malloc(10*sizeof(char));
+    
+    int readTaille = read(socketDialogue,tailleChar, 10*sizeof(char)); 
+    if( readTaille == -1){
+        perror("[-] Une erreur est survenu, nous n'arrivons pas à recevoir la taille du fichier que vous voulez envoyer \n");
+        exit(-1);
+    }
+    
+    int taille = atoi(tailleChar);
+    printf("La taille du message est : %d\n", taille);
+
+    //4) Récupération du contenu du fichier que l'on va créer
+    char * data = malloc(taille*sizeof(char)); 
+    int readData = read(socketDialogue,data, taille * sizeof(char));
+    if( readData == -1){
+        perror("[-] Une erreur est survenu, nous n'arrivons pas à recevoir le contenu du fichier\n");
+        exit(-1);
+    }
+    
+    printf("Voila le message recu = %s\n", data);
+
+    //Création du fichier dans le dossier souhaité
+    char path[150] = "fichiersServeur/";
+    strcat(path, name);
+
+    FILE * f = fopen(path, "w");
+
+    if(f != NULL){
+        fputs(data, f);
+        fclose(f);
+    } // fin de l'ajout
+    close(socketServeur);
+    close(socketDialogue);
+    pthread_exit(0);
+}
+
 
 //fonction qui va être utilisée par un thread du serveur pour 
 //pouvoir transmettre les messages du client 1 au client 2
@@ -406,9 +511,13 @@ void * Relayer(void * SocketClient)
                 strcpy(messageEnvoi, Commandes());    
                 reponseClient(socketClient, Commandes());     
             }
-            else if(strcmp(separation[0], "file") == 0)
+            else if(strcmp(separation[0],"file") == 0)
             {
-                printf("on est file case \n");
+                printf("Nous avons reçu l'information que tu veux envoyer un fichier\n");
+                pthread_t tFiles;
+                pthread_create(&tFiles, NULL, receptionFichier,NULL);
+                //receptionFichier(socketClient);
+                printf("fichier recu et enregistrer avec succés ! \n");
             }
             else
             {
@@ -430,10 +539,11 @@ int main(int argc, char * argv[])
     struct sockaddr_in pointDeRencontreLocal;
     socklen_t longueurAdresse;
 
+
     int socketDialogue;
     struct sockaddr_in pointDeRencontreDistant;
     int retour;
-    
+
     utilisateurConnecter = cree_liste();
     pthread_mutex_init(&mutex, NULL);
     //  Creation des threads pour envoyer et recevoir des messages 
@@ -464,9 +574,12 @@ int main(int argc, char * argv[])
     pointDeRencontreLocal.sin_family = PF_INET;
     // Toutes les interfaces
     pointDeRencontreLocal.sin_addr.s_addr = htonl(INADDR_ANY);
-    pointDeRencontreLocal.sin_port =  htons(atoi(argv[2]));
-
-    inet_aton(argv[1],&pointDeRencontreLocal.sin_addr);
+    port = malloc(10*sizeof(char));
+    strcpy(port, argv[2]); 
+    pointDeRencontreLocal.sin_port =  htons(atoi(port));
+    ip = malloc(50*sizeof(char));
+    strcpy(ip, argv[1]);
+    inet_aton(ip,&pointDeRencontreLocal.sin_addr);
     
     // On demande l'attachement local de la socket 
     if((bind(socketServeur,(struct sockaddr *)&pointDeRencontreLocal, longueurAdresse)) < 0)
@@ -500,11 +613,6 @@ int main(int argc, char * argv[])
             close(socketServeur);
             exit(-4);
         }
-        /*
-        char buffer[longueurMessage];
-        write_file(socketDialogue);
-        printf("[+]Data written in the file successfully.\n");
-        */
 
         //printf("on ajoute : %d a la file\n", socketDialogue);
         //identifierClient = socketDialogue;
