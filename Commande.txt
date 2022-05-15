@@ -14,4 +14,7 @@ Message
 
 Liste des commandes
 /help
+
+file
+choose a file to send to the server and save it
 ===================================================
