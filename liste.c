@@ -2,7 +2,13 @@
 #include <stdlib.h>
 #include "liste.h"
 
-//fonction de création d'une liste vide 
+
+
+/**
+ * @brief 
+ * fonction de création d'une liste vide
+ * @return liste*  Pointeur vers la nouvelle structure vide
+ */
 liste * cree_liste()
 {
     liste * Liste = malloc(sizeof(*Liste));
@@ -21,8 +27,13 @@ liste * cree_liste()
     return Liste;
 }
 
-//fonction qui vérifie si une liste est vide
-//renvoi 1 si la liste est vide, et 0 sinon
+
+/**
+ * @brief 
+ * fonction qui vérifie si une liste est vide
+ * @param l pointeur vers la structure liste
+ * @return renvoie 1 si la liste est vide, sinon 0 
+ */
 int liste_est_vide(liste * l)
 {
     int result = 0;
@@ -33,35 +44,66 @@ int liste_est_vide(liste * l)
     return result;
 }
 
-//fonction qui ajoute l'élément passé en paramètre au début de la liste
-void ajouter_debut(liste * l, int val, char * chaine)
+
+
+/**
+ * @brief 
+ * fonction qui ajoute l'élément passé en paramètre au début de la liste
+ * @param l Le pointeur sur la structure liste 
+ * @param id L'identifiant du client à ajouter
+ * @param pseudo Le pseudo du client 
+ */
+void ajouter_debut(liste * l, int id, char * pseudo)
 {
     Element *element = malloc(sizeof(*element));
-    element -> id = val;
-    element -> pseudo = chaine;    
+    element -> id = id;
+    element -> pseudo = pseudo;    
     element -> precedent = NULL;
     element -> suivant = l -> premier;
     element -> suivant -> precedent = element;
     l-> premier = element;
 }
 
-//fonction qui supprime le premier élément de la liste
+
+/**
+ * @brief 
+ * fonction qui supprime le premier élément de la liste
+ * @param l Le pointeur sur la structure liste 
+ */
 void supprimer_debut(liste * l)
 {
-    /*verfier si la liste est vide*/
+    //on vérifie que la liste n'est pas vide
+    if(liste_est_vide(l)){
+        printf("La liste est vide, il n'y a rien à supprimer\n");
+        return ;
+    }
     Element * Asupprimer = l -> premier;
     l -> premier = Asupprimer -> suivant;
     Asupprimer->suivant->precedent = l->premier;
     free(Asupprimer);
 }
 
-//fonction qui supprime l'élément en fin de liste, ne supprime rien si liste vide
+
+/**
+ * @brief 
+ * fonction qui supprime l'élément en fin de liste, ne supprime rien si liste vide
+ * @param l Le pointeur sur la structure de la liste 
+ */
 void supprimer_fin(liste * l)
 {
+    if(liste_est_vide(l)){
+        printf("Il n'y a rien à supprimer la liste est vide");
+        return ;
+    }
     supprimer_fin_recur(l -> premier);
 }
 
-//fonction auxiliaire de supprimer_fin qui parcours la liste
+
+/**
+ * @brief 
+ * fonction auxiliaire de supprimer_fin qui parcours la liste
+ * @param element La liste des clients récursive
+ */
 void supprimer_fin_recur(Element *element)
 {
     if (element -> suivant -> suivant -> suivant == NULL)
@@ -77,23 +119,35 @@ void supprimer_fin_recur(Element *element)
     }
 }
 
-//fonction qui supprime l'élément en fin de liste, ne supprime rien si liste vide
-void supprimer_val(liste * l, int val)
+
+/**
+ * @brief 
+ * fonction qui supprime l'élément en fin de liste, ne supprime rien si liste vide
+ * @param l Le pointeur de la structure liste 
+ * @param id L'identifiant du client à supprimer
+ */
+void supprimer_val(liste * l, int id)
 {
     if(liste_est_vide(l) == 1)
     {
         printf("la liste est vide !\n");
     }
-    else if(l->premier->precedent == NULL && l->premier->id == val)
+    else if(l->premier->precedent == NULL && l->premier->id == id)
     {
         supprimer_debut(l);
     } 
     else {
-        supprimer_val_recur(l -> premier, val);
+        supprimer_val_recur(l -> premier, id);
     }
 }
 
-//fonction auxiliaire de supprimer_fin qui parcours la liste
+
+/**
+ * @brief 
+ * fonction auxiliaire de supprimer_fin qui parcours la liste
+ * @param element Liste des clients contenue dans la structure "liste"
+ * @param val Identifiant du client à supprimmer
+ */
 void supprimer_val_recur(Element * element,int val)
 {
     if(element -> id == val)
@@ -116,13 +170,18 @@ void supprimer_val_recur(Element * element,int val)
     }
 }
 
-//fonction qui return la liste
-//affiche une erreur si la liste passé en paramètre est vide 
+
+
+/**
+ * @brief 
+ * fonction qui affiche les différents éléments d'une liste
+ * @param liste Le pointeur de la structure liste qui contient une liste de clients 
+ */
 void afficherListe(liste *liste)
 {
     if (liste == NULL)
     {
-        exit(EXIT_FAILURE);
+        printf("La liste est vide\n");
     }
     Element * actuel = liste->premier;
     while (actuel->suivant != NULL)
@@ -132,7 +191,13 @@ void afficherListe(liste *liste)
     }
 }
 
-//foncton qui retourne l'élément suivant, si il y'en a pas, return l'élément 
+
+/**
+ * @brief 
+ * foncton qui retourne l'élément suivant, si il y'en a pas, return l'élément 
+ * @param l Le pointeur de la structure liste qui contient une liste de clients
+ * @return Element* 
+ */
 Element * itemSuivant(Element * l)
 {
     if (l -> suivant -> suivant == NULL)
@@ -145,7 +210,12 @@ Element * itemSuivant(Element * l)
     }
 }
 
-//fonction qui return l'élément precedent, si il y'en a pas, return l'élément 
+/**
+ * @brief 
+ * fonction qui return l'élément precedent, si il y'en a pas, return l'élément 
+ * @param l Le pointeur de la structure liste qui contient une liste de clients
+ * @return Element* 
+ */
 Element * itemPrecedent(Element * l)
 {
     if (l -> precedent  == NULL)
@@ -158,17 +228,13 @@ Element * itemPrecedent(Element * l)
     }
 }
 
-void Options_Liste()
-{
-	printf(" ======================================================\n");
-	printf(" Les choix Possibles :\n");
-    printf(" Choix 1 : Sélectionner item suivant\n");
-    printf(" Choix 2 : Sélectionner item précédent\n");
-    printf(" Choix 3 : Afficher la valeur du maillon séléctionné\n");
-    printf(" Choix 4 : 'Quitter'\n\n");
-}
 
-
+/**
+ * @brief 
+ * retourne la taille de la liste
+ * @param l Le pointeur de la structure liste qui contient une liste de clients
+ * @return int 
+ */
 int liste_taille(liste * l)
 {
     int taille = 0;
@@ -180,42 +246,3 @@ int liste_taille(liste * l)
     }
     return taille;
 }
-
-/*
-int main(int argc, char const *argv[])
-{
-    liste * l = cree_liste();
-    int estvide = liste_est_vide(l);
-    printf("est ce que la liste est vide ? → %d\n", estvide); // elle dois renvoier 1 car la liste est vide
-
-    ajouter_debut(l , 1, "ayoub");
-    estvide = liste_est_vide(l);
-    liste_taille(l);
-    printf("est ce que la liste est vide ? → %d\n", estvide); // elle dois renvoier 0 car la liste est non vide
-    
-    ajouter_debut(l , 2, "salim");
-    estvide = liste_est_vide(l);
-    liste_taille(l);
-    printf("est ce que la liste est vide ? → %d\n", estvide); // elle dois renvoier 0 car la liste est non vide
-
-    ajouter_debut(l , 3, "bibo");
-    estvide = liste_est_vide(l);
-    liste_taille(l);
-    printf("est ce que la liste est vide ? → %d\n", estvide); // elle dois renvoier 0 car la liste est non vide
-
-    afficherListe(l);
-
-    printf("On commence la supression ! \n");
-    supprimer_val(l,1);
-    supprimer_val(l,2);
-    supprimer_val(l,3);
-    ajouter_debut(l , 3, "bibo");
-ajouter_debut(l , 3, "bibo");
-    estvide = liste_est_vide(l);
-    printf("la taille de liste %d\n",liste_taille(l));
-    printf("est ce que la liste est vide ? → %d\n", estvide); // elle dois renvoier 0 car la liste est non vide
-    afficherListe(l);
-
-    return 0;
-}
-*/

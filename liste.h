@@ -29,7 +29,9 @@ void supprimer_val(liste * l, int val);
 void supprimer_val_recur(Element *element, int val);
 
 void afficherListe(liste * l);
+
 int liste_taille(liste * l);
+
 Element * itemSuivant(Element * l);
+
 Element * itemPrecedent(Element * l);
-void Options_Liste();
