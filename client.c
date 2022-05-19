@@ -17,13 +17,24 @@
 #define longueurMessage 10000
 #define CHUNK_SIZE 512
 
+
+
+/******* Les variables globales ***********/ 
+
 // Connecté ou pas!
 int status = 0;
 
-char * ip;
-int port;
+char * ip; //adresse IP du serveur à laquelle se connecte le client 
 
-// lister les commandes pour les mode de message possible
+int port;  //numéro de port à lequelle il va se connecter
+
+/******************************************/
+
+
+/**
+ * @brief 
+ * liste les commandes pour les différents modes de message possibles
+ */
 void Commandes()
 {
     FILE * cmd;
@@ -35,24 +46,24 @@ void Commandes()
     fclose(cmd);
 }
 
-
+/**
+ * @brief 
+ * fonction qui permet la connexion du client au début, avec la sélection du pseudo
+ * @param socketClient socket du client qui permet la communication avec le serveur
+ */
 void connection(int socketClient)
 {
-    int ecrits;
-
-    // Reception des données du serveur
-    int lus;
-    char messageRecu[longueurMessage];
+    int ecrits;  //stocker le retour de la fonction "write" pour savoir si c'est correct
+    int lus;    //stocker le retour de la fonction "read" pour savoir si la lecture se déroule correctement
+    char messageRecu[longueurMessage];  //où on stocke le message reçu par le serveur
+    char messageEnvoi[longueurMessage];  //où on stocke le message à envoyer
     int socket = (long)socketClient; 
     
-    // le message de la couche application ! 
-    char messageEnvoi[longueurMessage];
     
-    // Envoie un message au serveur et gestion des erreurs
-    // sprintf(messageEnvoi, "Holla");
     int i = 0;
     while(status == 0)
-    {
+    {   
+        //Début de la connexion avec l'envoi du pseudo choisi
         memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
         if( i < 1)
         {
@@ -82,6 +93,8 @@ void connection(int socketClient)
         }
 
         memset(messageRecu, 0x00, longueurMessage*sizeof(char));
+
+        //on récupére la réponse du serveur pour savoir si le pseudo est bien disponible
         lus = read(socket, messageRecu, longueurMessage*sizeof(char)); 
         switch(lus)
         {
@@ -122,8 +135,8 @@ void connection(int socketClient)
  * @brief   
  * Lister les fichiers disponible dans un dossier
  * et retourner le nombre
- * @param dossier 
- * @return int fichier nombre de fichiers disponible
+ * @param dossier dossier qui contient les fichiers côté client
+ * @return int Nombre de fichiers disponible
  */
 int listeFichierDansDos(char * dossier, char ** fichiers)
 {
@@ -164,24 +177,28 @@ int tailleFile(char * filename){
 
 
 
-
+/**
+ * @brief 
+ * Thread qui s'occupe de l'envoi d'un fichier vers le serveur 
+ * @param fileName Nom du fichier à envoyer 
+ */
 void  * envoiFile(void * fileName){
 
     char * filename = (char *) fileName;
+
+    // On va créer une nouvelle connexion avec le serveur sur un nouveau port pour 
+    // l'envoi du fichier sans interferer avec l'envoi et la réception de messages 
     long socketClient;
     struct sockaddr_in pointDeRencontreDistant;
     socklen_t longueurAdresse;
 
-    // Création d'un socket de communication
-    // PF_INET c'est le domaine pour le protocole internet IPV4 
     socketClient = socket(PF_INET, SOCK_STREAM, 0);
 
     /* 0 indique que l’on utilisera leprotocole par défaut 
     associé à SOCK_STREAM soit TCP
     */
 
-    // Teste la valeur renvoyée par l’appel système socket()
-    // afin de vérifier la bonne création de cela
+    // Teste la valeur renvoyée par l’appel système socket() afin de vérifier la bonne création de celle-ci
     if(socketClient < 0)
     {
         perror("socket echoué");
@@ -203,8 +220,7 @@ void  * envoiFile(void * fileName){
     // Connection et gestion des erreurs
     /*
     connect() renvoie 0 s’il réussit, ou -1 s’il échoue, auquel cas errno contient lecode d’erreur
-    */
-       
+    */ 
     if((connect(socketClient, (struct sockaddr *)&pointDeRencontreDistant, longueurAdresse)) == -1)
     {
         perror("connect");
@@ -213,8 +229,10 @@ void  * envoiFile(void * fileName){
     }
     printf("Connection reussi avec the server \n");
 
+    /*  La connexion est réussie, on peut donc commencer l'envoi du fichier  */
 
-    //Envoi du nom du fichier
+
+    // 1) Envoi du nom du fichier
     int writeName = write(socketClient, filename, 50*sizeof(char));
     switch(writeName){
         case -1 : 
@@ -230,7 +248,7 @@ void  * envoiFile(void * fileName){
     char path[150] = "fichiersClient/";
     strcat(path, filename); 
 
-    //on recupere maintenant la taille du fichier
+    // 2) on recupere maintenant la taille du fichier et on l'envoie
     int taille = tailleFile(path);
     char* tailleChar =  malloc( 10 * sizeof(char));
     sprintf(tailleChar, "%d", taille);
@@ -248,17 +266,9 @@ void  * envoiFile(void * fileName){
             printf("Taille du fichier envoyée avec succés\n");
             puts("\n☼☼☼ Envoyer Un Message ☼☼☼");
     } 
-    //int t = (long) integer;
     
 
-    //char * chaineTaille = itoa(taille);
-    /*int envoiTaille = write(socket, chaineTaille, sizeof(taille));
-    if(envoiTaille == -1 || envoiTaille == 0){
-        perror("Echec dans l'envoi de la du fichier");
-        exit(-1);
-    }*/
-    //On ouvre le fichier
-
+    // 3) On ouvre le fichier pour en extraire le contenu et l'envoyer
     FILE * fp = fopen(path,"r");
     
     if (fp == NULL) {
@@ -266,7 +276,7 @@ void  * envoiFile(void * fileName){
         exit(1);
     }
 
-    char data[taille];
+    char data[taille];  //buffer qui va contenir le contenu du fichier
 
     fread(data, taille, 1, fp);
     fclose(fp);
@@ -282,11 +292,15 @@ void  * envoiFile(void * fileName){
         default :
             printf("Contenu du fichier bien envoyé");
     }
-    close(socketClient);
+    close(socketClient);  //fermeture de cette connexion
     pthread_exit(0);
 }
 
-
+/**
+ * @brief 
+ * fonction qui permet le bon choix du fichier à envoyer et ensuite crée un thread qui s'occupe de l'envoi
+ * @param socket socket du Client pour pouvoir envoyer "file" au serveur une fois qu'un fichier valide a été sélectionné
+ */
 void procFichier(int socket)
 {
     char ** fichiers = malloc(256*sizeof(char));
@@ -320,7 +334,6 @@ void procFichier(int socket)
                 printf("le fichier a été lu correctement \n");
                 strcpy(fichierChoisit, nomFichier);
                 pthread_create(&tFiles, NULL, envoiFile,(void *) fichierChoisit);
-                //envoiFile(socket, fichierChoisit);
                 printf("[+]Fichier a été bien envoyer.\n");
             }
         }
@@ -330,12 +343,17 @@ void procFichier(int socket)
         }
     }
 }
-//fonction qui va servir au thread pour l'envoi de messages
+
+
+/**
+ * @brief 
+ * Thread qui s'occupe des envois de messages du client au serveur
+ * @param socketClient socket du Client qui permet la communication
+ */
 void * Envoyer(void * socketClient)
 {
     int ecrits;
     int socket = (long)socketClient;
-    // le message de la couche application ! 
     char messageEnvoi[longueurMessage];
     pthread_t tFiles;
 
@@ -381,14 +399,15 @@ void * Envoyer(void * socketClient)
 
 
 
-
-
-//fonction qui va servir au thread 
+/**
+ * @brief 
+ * Thread qui s'occupe de la réception des messages reçus par le serveur 
+ * @param socketClient socket du Client qui permet la communication
+ */
 void * Recevoir(void * socketClient)
 {
     // Reception des données du serveur
     int lus;
-    // le message de la couche application!
     char * messageRecu = malloc(longueurMessage*sizeof(char));
     int socket = (long)socketClient;
     while (1)
@@ -406,9 +425,7 @@ void * Recevoir(void * socketClient)
                 close(socket);
                 exit(-5);
             default:
-                //puts(messageRecu);
                 printf("\n");
-                //printf("%s \n", messageRecu);
                 puts(messageRecu);
                 // On a fini d'afficher le message recu on affiche la demande d'envoie
                 puts("\n☼☼☼ Envoyer Un Message ☼☼☼");
@@ -417,6 +434,9 @@ void * Recevoir(void * socketClient)
     }
     pthread_exit(0);   
 }
+
+
+
 
 int main(int argc, char *argv[]) 
 {
