@@ -177,7 +177,7 @@ void deconnecterTousClients(Channel * channel){
     while(actuel -> suivant != NULL)
     {
         printf("actule %d \n", actuel -> id);
-        supprimer_val(channel->clients, actuel ->id);
+        supprimer_client(channel, actuel ->id);
         actuel = actuel->suivant;
     }
 }
@@ -208,18 +208,17 @@ int main(int argc, char const *argv[])
     ajouter_client(cha1, 5, "titi");
     afficheClients(cha1);
 
-
+/*
     supprimer_client(cha1, 1);
     supprimer_client(cha1, 2);
     supprimer_client(cha1, 3);
     afficheClients(cha1);
     supprimer_client(cha1, 4);
     supprimer_client(cha1, 5);
-
     supprimer_client(cha1, 6);
-
+*/
     // la fonction deconnecterTousClients ne fonctione pas correctement il faut la regler
-    //deconnecterTousClients(cha1);
+    deconnecterTousClients(cha1);
     printf("\033[30;01mLa chaine est vide ?\033[00m\033[32;01m %d\033[00m\n",Channel_est_vide(cha1));
 
 //liste * getClients(Channel * channel);
