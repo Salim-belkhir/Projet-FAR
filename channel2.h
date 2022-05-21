@@ -5,7 +5,7 @@ struct Channel{
     char * description;
     int capacity;
     int count;
-    int clients[];
+    int * clients;
 };
 
 Channel * cree_Channel(char * name, char* descr,int capacity);

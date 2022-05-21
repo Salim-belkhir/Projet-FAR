@@ -1,6 +1,6 @@
 #include <stdio.h> 
 #include <stdlib.h>
-#include "channel.h"
+#include "channel2.h"
 
 /**
  * @brief 
@@ -16,15 +16,14 @@ Channel * cree_Channel(char * name, char* descr,int capacity){
         exit(-1);
     }
     Channel* channel = malloc(sizeof(Channel*));
+    channel->nom = malloc(50*sizeof(char));
+    channel->description = malloc(128*sizeof(char)); 
     channel->nom = name;
     channel->description = descr; 
     channel->count = 0;
     channel->capacity = capacity;
-    channel->clients[capacity];
-    int i = 0;
-    for(i; i < capacity; i++){
-        channel->clients[i] = NULL;
-    }
+    channel->clients = malloc(capacity*sizeof(int));
+    return channel;
 }
 
 /**
@@ -118,19 +117,20 @@ void setDescription(Channel * channel, char * newDescr){
  */
 void ajouter_client(Channel * channel, int id){
     if(channel->count >= channel->capacity){
-        perror("[!] Le channel a atteint la limite des clients possibles\n");
-        exit(-1);
-    }
-    int i =0;
-    int nonInsere = 1;
-    while(i<channel->capacity && nonInsere){
-        if(channel->clients[i] == NULL){
-            channel->clients[i] = id;
-            nonInsere = 0;
+        printf("\033[31;01m[!] Le channel a atteint la limite des clients possibles\033[00m\n");
+    } else {
+        
+        int i =0;
+        int nonInsere = 1;
+        while(i<channel->capacity && nonInsere){
+            if(channel->clients[i] == NULL){
+                channel->clients[i] = id;
+                nonInsere = 0;
+            }
+            i++;
         }
-        i++;
+        channel->count ++;
     }
-    channel->count ++;
 }
 
 /**
@@ -141,28 +141,43 @@ void ajouter_client(Channel * channel, int id){
  */
 void supprimer_client(Channel * channel, int id){
     if(Channel_est_vide(channel)){
-        perror("[!] Le channel est vide, il n'y a aucun client à supprimer du channel\n");
-        exit(-1);
-    }
-    int nonSupprime = 1;
-    int i = 0; 
-    while(i<channel->capacity && nonSupprime){
-        if(channel->clients[i] == id){
-            channel->clients[i] = NULL;
-            nonSupprime = 0;
-            channel->count--;
-        }
-        i++;
-    }
-    if(nonSupprime == 0){
-        printf("Le client a bien été déconnecté du channel");
-    }
-    else{
-        perror("Le client n'est pas connecté au channel \n");
-        printf("%s", channel->nom);
-        exit(-1);
-    }
+        printf("\033[33;01m[!] Le channel est vide, il n'y a aucun client à supprimer du channel\033[00m\n");
+    } else {
 
+        int nonSupprime = 1;
+        int i = 0; 
+        while(i<channel->capacity && nonSupprime){
+            if(channel->clients[i] == id){
+                channel->clients[i] = NULL;
+                nonSupprime = 0;
+                channel->count--;
+            }
+            i++;
+        }
+        if(nonSupprime == 0){
+            printf("Le client a bien été déconnecté du channel\n");
+        }
+        else{
+            perror("Le client n'est pas connecté au channel \n");
+            printf("%s", channel->nom);
+            exit(-1);
+        }
+    }
+}
+
+/**
+ * @brief 
+ * Affiche la liste des clients connecté au channel
+ * @param channel channel sur lequel les clients sont connecté 
+ */
+void afficheClients(Channel * channel)
+{
+    int i;
+    printf("\033[36,01mLa liste des clients : \033[00m\n");
+    for(i=0; i<channel->count; i++)
+    {
+        printf("→\033[30;01m id :\033[00m \033[36;01m< \033[00m\033[32;01m%d\033[00m\033[36;01m >\033[00m\n", channel->clients[i]);
+    }
 }
 
 //A faire ailleurs, car il suffit de mettre a null la case qui contiendra ce channel
@@ -174,7 +189,77 @@ void supprimer_client(Channel * channel, int id){
  * @param channel channel sur lequel il faut supprimer un utilisateur
  */
 void deconnecterTousClients(Channel * channel){
-    Channel * channel = cree_Channel(channel->nom, channel->description, channel->capacity);
-    free(channel->clients);
-    channel = channel;
+    int i;
+    int boucle = channel-> count;
+    for(i = 0; i < boucle; i++)
+    {
+        supprimer_client(channel,channel->clients[i]);
+    }
+}
+
+int main(int argc, char const *argv[])
+{
+    printf ("\033[36;01mMain test de Channel\033[00m\n");
+    // Création d'un Channel
+    Channel * cha1= cree_Channel("Channel1","Tester channel1",6);
+    
+    printf("\033[30;01mLe channel est vide ?\033[00m\033[32;01m %d\033[00m\n",Channel_est_vide(cha1));
+
+    printf("\033[30;01mLe nom du channel :\033[00m \033[36;01m< \033[00m\033[32;01m%s\033[00m\033[36;01m >\033[00m\n",getName(cha1));
+
+    printf("\033[30;01mla description du channel :\033[00m \033[36;01m< \033[00m\033[32;01m%s\033[00m\033[36;01m >\033[00m\n",getDescription(cha1));
+
+    printf("\033[30;01mla capacité du channel  :\033[00m \033[36;01m< \033[00m\033[32;01m%d\033[00m\033[36;01m >\033[00m\n",getCapacity(cha1));
+
+    setName(cha1, "Channel1");
+
+    setDescription(cha1, "Test de channel");
+
+    printf("\033[30;01mLe channel est vide ?\033[00m\033[32;01m %d\033[00m\n",Channel_est_vide(cha1));
+
+    printf("\033[30;01mLe nom du channel :\033[00m \033[36;01m< \033[00m\033[32;01m%s\033[00m\033[36;01m >\033[00m\n",getName(cha1));
+
+    printf("\033[30;01mla description du channel :\033[00m \033[36;01m< \033[00m\033[32;01m%s\033[00m\033[36;01m >\033[00m\n",getDescription(cha1));
+
+    printf("\033[30;01mNombre de client connecté est  :\033[00m \033[36;01m< \033[00m\033[32;01m%d\033[00m\033[36;01m >\033[00m\n",getCount(cha1));
+    ajouter_client(cha1, 1);
+    ajouter_client(cha1, 2);
+    ajouter_client(cha1, 3);
+    ajouter_client(cha1, 4);
+    ajouter_client(cha1, 5);
+    ajouter_client(cha1, 6);
+    ajouter_client(cha1, 7);
+    afficheClients(cha1);
+    printf("\033[30;01mNombre de client connecté est  :\033[00m \033[36;01m< \033[00m\033[32;01m%d\033[00m\033[36;01m >\033[00m\n",getCount(cha1));
+
+    supprimer_client(cha1, 1);
+    supprimer_client(cha1, 2);
+    supprimer_client(cha1, 3);
+    supprimer_client(cha1, 4);
+    supprimer_client(cha1, 5);
+    supprimer_client(cha1, 6);
+    afficheClients(cha1);
+    printf("\033[30;01mNombre de client connecté est  :\033[00m \033[36;01m< \033[00m\033[32;01m%d\033[00m\033[36;01m >\033[00m\n",getCount(cha1));    
+
+
+    ajouter_client(cha1, 1);
+    ajouter_client(cha1, 2);
+    ajouter_client(cha1, 3);
+    ajouter_client(cha1, 4);
+    ajouter_client(cha1, 5);
+    afficheClients(cha1);
+    printf("\033[30;01mNombre de client connecté est  :\033[00m \033[36;01m< \033[00m\033[32;01m%d\033[00m\033[36;01m >\033[00m\n",getCount(cha1));
+
+
+// la fonction deconnecterTousClients ne fonctione pas correctement il faut la regler
+    deconnecterTousClients(cha1);
+    printf("\033[30;01mLe channel est vide ?\033[00m\033[32;01m %d\033[00m\n",Channel_est_vide(cha1));
+    printf("\033[30;01mNombre de client connecté est  :\033[00m \033[36;01m< \033[00m\033[32;01m%d\033[00m\033[36;01m >\033[00m\n",getCount(cha1));    
+
+//int * getClients(Channel * channel);
+
+/*
+    //void supprimer_Channel(Channel * Channel);
+*/
+    return 0;
 }
