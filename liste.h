@@ -19,6 +19,7 @@ liste * cree_liste();
 int liste_est_vide(liste * l);
 
 void ajouter_debut(liste * l, int val, char * chaine);
+void supprimer_debut(liste * l);
 
 void supprimer_fin(liste * l);
 
