@@ -118,8 +118,7 @@ void setDescription(Channel * channel, char * newDescr){
 void ajouter_client(Channel * channel, int id){
     if(channel->count >= channel->capacity){
         printf("\033[31;01m[!] Le channel a atteint la limite des clients possibles\033[00m\n");
-    } else {
-        
+    } else {        
         int i =0;
         int nonInsere = 1;
         while(i<channel->capacity && nonInsere){
@@ -211,7 +210,7 @@ int main(int argc, char const *argv[])
 
     printf("\033[30;01mla capacité du channel  :\033[00m \033[36;01m< \033[00m\033[32;01m%d\033[00m\033[36;01m >\033[00m\n",getCapacity(cha1));
 
-    setName(cha1, "Channel1");
+    setName(cha1, "Chouchou$");
 
     setDescription(cha1, "Test de channel");
 
@@ -238,6 +237,8 @@ int main(int argc, char const *argv[])
     supprimer_client(cha1, 4);
     supprimer_client(cha1, 5);
     supprimer_client(cha1, 6);
+    supprimer_client(cha1, 7);
+
     afficheClients(cha1);
     printf("\033[30;01mNombre de client connecté est  :\033[00m \033[36;01m< \033[00m\033[32;01m%d\033[00m\033[36;01m >\033[00m\n",getCount(cha1));    
 
