@@ -1,6 +1,7 @@
 #include <stdio.h> 
 #include <stdlib.h>
 #include "liste.h"
+#include <string.h>
 
 
 
@@ -23,6 +24,7 @@ liste * cree_liste()
     element->suivant = NULL;
     element -> precedent = NULL;
     element -> pseudo = NULL;
+    element -> canal = NULL;
     Liste->premier = element;
     return Liste;
 }
@@ -45,6 +47,60 @@ int liste_est_vide(liste * l)
 }
 
 
+/**
+ * @brief 
+ * Retourne le nom du channel auquel un client est connecté
+ * @param li Liste des clients
+ * @param id Identifiant du client dont on cherche le canal
+ * @return Nom du channel 
+ */
+char * getCanalClient(liste * li, int id){
+    if(liste_est_vide(li)){
+        perror("[!] La liste des utilisateurs est vide");
+        exit(-1);
+    }
+    char * channel = malloc(100*sizeof(char));
+    int nonTrouve = 1;
+    Element * e = li->premier;
+    while(e!= NULL && nonTrouve){
+        if(e->id == id){
+            nonTrouve = 0;
+            strcat(channel, e->canal);
+        }
+    }
+    if(e == NULL){
+        perror("Client non existant");
+        exit(-1);
+    }
+    return channel;
+}
+
+
+/**
+ * @brief 
+ * Modifie le canal associer à un client
+ * @param l 
+ * @param id 
+ * @param canal 
+ * @return retourne 1 si le canal est mis à jour, sinon -1
+ */
+int modifierCanalClient(liste * l, int id, char * canal){
+    if(liste_est_vide(l)){
+        return -1;
+    }
+    int taille = liste_taille(l);
+    int i = 0;
+    int nonFini = 1;
+    Element * e = l->premier;
+    while(e != NULL && nonFini){
+        if(e-> id == id){
+            e->canal = canal;
+            nonFini = 0;
+        }
+    e = e->suivant;
+    }
+}
+
 
 /**
  * @brief 
@@ -53,11 +109,12 @@ int liste_est_vide(liste * l)
  * @param id L'identifiant du client à ajouter
  * @param pseudo Le pseudo du client 
  */
-void ajouter_debut(liste * l, int id, char * pseudo)
+void ajouter_debut(liste * l, int id, char * pseudo, char * canal)
 {
     Element *element = malloc(sizeof(*element));
     element -> id = id;
-    element -> pseudo = pseudo;    
+    element -> pseudo = pseudo;
+    element -> canal = canal;    
     element -> precedent = NULL;
     element -> suivant = l -> premier;
     element -> suivant -> precedent = element;
@@ -186,7 +243,7 @@ void afficherListe(liste *liste)
     Element * actuel = liste->premier;
     while (actuel->suivant != NULL)
     {
-        printf("le client %s a pour identifiant -> %d\n", actuel->pseudo, actuel->id);
+        printf("L'utilisateur %s (id : %d), il est connecté au channel : %s\n", actuel->pseudo, actuel->id, actuel->canal);
         actuel = actuel->suivant;
     }
 }

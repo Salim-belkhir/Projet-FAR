@@ -89,6 +89,28 @@ int* getClients(Channel * channel){
     return channel->clients;
 }
 
+
+/**
+ * @brief 
+ * Verifie si un client est connecté a un channel à l'aide de son identifiant
+ * @param channel le channel pour lequel on vérifie
+ * @param id l'identifiant du client
+ * @return Retourne 1 si le client appartient au serveur, sinon 0 
+ */
+int appartenir(Channel * channel, int id){
+    int nonFini = 1;
+    int trouve = 0;
+    int i = 0;
+    while(i < channel->count && nonFini){
+        if(channel->clients[i] == id){
+            trouve = 1;
+            nonFini = 0;
+        }
+        i++;
+    }
+    return trouve;
+}
+
 /**
  * @brief 
  * modifie le nom du channel passé en paramètres 
@@ -114,22 +136,24 @@ void setDescription(Channel * channel, char * newDescr){
  * fonction qui ajoute un client à un Channel
  * @param channel channel sur lequel il faut supprimer un utilisateur
  * @param id id du client à ajouter
+ * @return retourne 1 si l'ajout est un succès, sinon -1
  */
-void ajouter_client(Channel * channel, int id){
+int ajouter_client(Channel * channel, int id){
     if(channel->count >= channel->capacity){
         printf("\033[31;01m[!] Le channel a atteint la limite des clients possibles\033[00m\n");
-    } else {        
-        int i =0;
-        int nonInsere = 1;
-        while(i<channel->capacity && nonInsere){
-            if(channel->clients[i] == NULL){
-                channel->clients[i] = id;
-                nonInsere = 0;
-            }
-            i++;
+        return -1;
+    }        
+    int i =0;
+    int nonInsere = 1;
+    while(i<channel->capacity && nonInsere){
+        if(channel->clients[i] == NULL){
+            channel->clients[i] = id;
+            nonInsere = 0;
         }
-        channel->count ++;
+        i++;
     }
+    channel->count ++;
+    return 1;
 }
 
 /**
@@ -160,6 +184,12 @@ void supprimer_client(Channel * channel, int id){
             perror("Le client n'est pas connecté au channel \n");
             printf("%s", channel->nom);
             exit(-1);
+        }
+
+        while(channel->clients[i] != NULL){
+            channel->clients[i-1] = channel->clients[i];
+            channel->clients[i] = NULL;
+            i++;
         }
     }
 }
@@ -195,7 +225,7 @@ void deconnecterTousClients(Channel * channel){
         supprimer_client(channel,channel->clients[i]);
     }
 }
-
+/*
 int main(int argc, char const *argv[])
 {
     printf ("\033[36;01mMain test de Channel\033[00m\n");
@@ -261,6 +291,6 @@ int main(int argc, char const *argv[])
 
 /*
     //void supprimer_Channel(Channel * Channel);
-*/
+
     return 0;
-}
+}*/

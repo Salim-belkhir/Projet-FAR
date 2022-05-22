@@ -1,10 +1,11 @@
 typedef struct Element Element;
 struct Element
 {
+    int id;
     Element *suivant;
     Element * precedent;
+    char * canal;
     char * pseudo; 
-    int id;
 };
 
 typedef struct liste liste;
@@ -18,7 +19,12 @@ liste * cree_liste();
 
 int liste_est_vide(liste * l);
 
-void ajouter_debut(liste * l, int val, char * chaine);
+void ajouter_debut(liste * l, int val, char * chaine, char * canal);
+
+char * getCanalClient(liste * li, int id);
+
+int modifierCanalClient(liste * l, int id, char * canal);
+
 void supprimer_debut(liste * l);
 
 void supprimer_fin(liste * l);

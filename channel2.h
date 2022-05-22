@@ -26,7 +26,9 @@ void setName(Channel * channel, char * newName);
 
 void setDescription(Channel * channel, char * newDescr);
 
-void ajouter_client(Channel * channel, int id);
+int appartenir(Channel * channel, int id);
+
+int ajouter_client(Channel * channel, int id);
 
 void supprimer_client(Channel * channel, int id);
 

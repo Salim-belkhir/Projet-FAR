@@ -10,15 +10,16 @@
 #include "liste.h"
 #include <signal.h>
 #include <dirent.h>
-#include <channel.h>
+#include "channel2.h"
 
 
 #define longueurMessage 10000
+#define sizeofArraySalons 10
 
 
 /******   Les variables globales    ******/
 
-Channel** salons;
+Channel * salons[sizeofArraySalons];
 
 char * ip;   //adresse IP
 
@@ -55,6 +56,8 @@ void closeAllsockets()
         actuel = actuel->suivant;
     }
 }
+
+
 
 /**
  * @brief 
@@ -214,18 +217,57 @@ void EnvoyerMessageSpe(int socketClient, char * Message, char * client, char * c
  * @param Message message qu'il souhaite envoyé
  */
 void EnvoyerMessage(int socketClient, char * Message)
-{
+{   
+    //On récupére le channel auquel le client est attaché
+    char * salon = getCanalClient(utilisateursConnectes, socketClient);
     int ecrits;
     char * messageEnvoi = malloc(longueurMessage*sizeof(char));
-    strcat(messageEnvoi,"▬▬▬ MESSAGE A TOUT LE MONDE ▬▬▬\n");
+    memset(messageEnvoi, 0, longueurMessage*sizeof(char)); 
+    strcat(messageEnvoi,"▬▬▬ MESSAGE A TOUT LE CHANNEL ▬▬▬\n");
     strcat(messageEnvoi,"▬ ");
     strcat(messageEnvoi,pseudoParID(socketClient));
     strcat(messageEnvoi," ▬");
-    strcat(messageEnvoi," a envoyé ce message à tout les membres : \n");
+    strcat(messageEnvoi," a envoyé ce message à tous les membres du canal '");
+    strcat(messageEnvoi,salon);
+    strcat(messageEnvoi, "' : \n");
     strcat(messageEnvoi,"→ ");
     strcat(messageEnvoi, Message); 
 
-    Element * actuel = utilisateursConnectes -> premier;
+    int i = 0;
+    int dontFind = 1;
+    //On cherche le salon qui est associé au client
+    while(i < sizeofArraySalons && salons[i] != NULL && dontFind){
+        if(strcmp(salons[i]->nom,salon) == 0){
+            //On a trouvé la position du channel dans le tableau de salons
+            dontFind = 0;
+        }
+        i++;
+    }
+    i--;
+    printf("J'ai trouvé l'indice du channel actuel : %d \n", i);
+    int j = 0;
+    //On envoie le message à tous les clients connectés au channel
+    while(j < getCount(salons[i])){
+        printf("Je suis dans le while \n");
+        if(salons[i]->clients[j] != socketClient){
+            printf("Le %d er client a qui il faut envoyer : %ld \n", getClients(salons[i])[j]);
+            switch(write(salons[i]->clients[j], messageEnvoi, strlen(messageEnvoi)* sizeof(char)))
+            {
+                case -1: 
+                    perror("[-]Problem of send the message");
+                    closeAllsockets(utilisateursConnectes);
+                    exit(-6);
+                case 0:
+                    fprintf(stderr, "[!]The socket was closed by the client !\n\n");
+                    closeAllsockets(utilisateursConnectes);
+                default:
+                    printf("Message %s envoyé avec succés (%d octets)\n\n",Message,ecrits);
+            }
+        }
+        j++;
+    }
+
+    /*Element * actuel = utilisateursConnectes -> premier;
     while(actuel -> suivant != NULL && liste_taille(utilisateursConnectes) > 0)
     {
         if(socketClient != actuel -> id)
@@ -245,7 +287,7 @@ void EnvoyerMessage(int socketClient, char * Message)
             }
         } 
         actuel = actuel->suivant;
-    }
+    }*/
 }
 
 
@@ -296,6 +338,80 @@ int existPseudo(char * pseudo) {
     }
     return result;
 }
+
+
+/**
+ * @brief 
+ * Récupération des informations sur un channel en particulier
+ * @param socket Socket du client qui demande ces informations
+ */
+void infosChannels(int socket){
+    char data[2048];
+    memset(data, 0, 2048*sizeof(char));
+    int i = 0;
+    strcat(data, "Les informations du salon sont : \n");
+    while(i<sizeofArraySalons && salons[i] != NULL){
+        strcat(data, "-> Le salon ");
+        strcat(data, salons[i]->nom);
+        strcat(data," qui a pour description : ");
+        strcat(data, salons[i]->description);
+        strcat(data,". Elle contient actuellement ");
+        char countChar[5];
+        sprintf(countChar, "%d", salons[i]->count);
+        strcat(data, countChar);
+        strcat(data," clients avec une limite de ");
+        char capacityChar[5];
+        sprintf(capacityChar, "%d", salons[i]->capacity);
+        strcat(data, capacityChar);
+        strcat(data," clients \n\n");
+        i++;
+    }
+    
+    if(i==0){
+        strcat(data, "Malheuresement il n'y a pas de channels existants\n");
+    }
+
+    switch(write(socket, data, 2048*sizeof(char))){
+        case -1:
+            perror("[-]Erreur rencontrée dans l'envoi des infos du channel");
+            exit(-1);
+        case 0:
+            perror("La socket a été fermée par le client");
+            exit(-1);
+    }
+}
+
+
+/**
+ * @brief 
+ * Renvoie au clients une liste des différents channels existants
+ * @param socket Socket du client qui demande la liste des cannals
+ */
+void listeChannels(int socket){
+    char data[1024];
+    memset(data, 0, 1024*sizeof(char));
+    strcat(data, "La liste des channels est :\n");
+    int i = 0;
+    while(salons[i] != NULL){
+        char indice[3];
+        sprintf(indice, "%d", i);
+        strcat(data, indice);
+        strcat(data, " -> ");
+        strcat(data, salons[i]->nom);
+        strcat(data, "\n");
+        i++;
+    }
+    switch(write(socket, data, 1024* sizeof(char))){
+        case -1 :
+            perror("Une erreur s'est produite dans l'envoi du contenu au client");
+            exit(-1);
+        case 0 : 
+            perror("La socket a été fermée par le client");
+            exit(-1);
+    }
+}
+
+
 
 
 /**
@@ -425,6 +541,145 @@ void * receptionFichier(){
 
 
 /**
+ * @brief 
+ * Crée un nouveau channel et l'ajoute au tableau de channels
+ * @param socket 
+ */
+void createChannel(int socket){
+    // 1) On vérifie si il reste de la place dans le serveur pour un nouveau channel
+    int reste = 1;
+    int i = 0;
+    while(i < sizeofArraySalons && reste){
+        if(salons[i] == NULL){
+            reste = 0;
+        }
+        i++;
+    }
+    if(reste){
+        switch(write(socket, "impossible", 100 * sizeof(char))){
+            case -1 :
+                perror("[-] Problème dans l'envoi du diagnostic");
+                exit(-1);
+            case 0 : 
+                perror("[-] La socket a été fermée par le client");
+                exit(-1);
+        }
+        printf("[!] Il ne reste plus de places pour un nouveau channel\n");
+        return ;
+    }
+    else{
+        switch(write(socket, "possible", 100 * sizeof(char))){
+            case -1 :
+                perror("[-] Problème dans l'envoi du diagnostic");
+                exit(-1);
+            case 0 : 
+                perror("[-] La socket a été fermée par le client");
+                exit(-1);
+        }
+    }
+
+    // 2) Réception du nom du canal
+    char * name = malloc(100 * sizeof(char));
+    switch(read(socket, name, 100 * sizeof(char))){
+        case -1 :
+            perror("[-] Problème dans la reception du nom du nouveau channel");
+            exit(-1);
+        case 0 : 
+            perror("[-] La socket a été fermée par le client");
+            exit(-1);
+    }
+    printf("Voici le nom du channel : %s\n", name);
+
+    // 3) Réception de la description du salon
+    char * description = malloc(1024 * sizeof(char));
+    switch(read(socket, description, 1024 * sizeof(char))){
+        case -1 :
+            perror("[-] Problème dans la reception de la description du nouveau channel");
+            exit(-1);
+        case 0 : 
+            perror("[-] La socket a été fermée par le client");
+            exit(-1);
+    }
+    printf("Voici la description du nouveau channel : %s\n", description);
+
+    // 4) Réception de la taille maximum du salon
+    char * tailleMax = malloc(5*sizeof(char));
+    switch(read(socket, tailleMax, 5 * sizeof(char))){
+        case -1 :
+            perror("[-] Problème dans la reception de la description du nouveau channel");
+            exit(-1);
+        case 0 : 
+            perror("[-] La socket a été fermée par le client");
+            exit(-1);
+    }
+    int taille = atoi(tailleMax);
+    printf("La taille max est %d\n", taille);
+
+    salons[i-1] = cree_Channel(name, description, taille);
+}
+
+
+
+
+/**
+ * @brief 
+ * Fonction qui permet de changer de channel
+ * @param socket socket du client
+ * @param canal Nom du channel sur lequel on sohaite se connecter
+ */
+void changementCanal(void * SocketClient, char * canal){
+    int socket = (long) SocketClient;
+    int nonExist = 1;
+    int i = 0;
+    char data[1024];
+    memset(data, 0, 1024*sizeof(char));
+    while(salons[i] != NULL && nonExist){
+        //on cherche d'abord parmi tous les salons si un d'entre eux porte ce nom
+        if(strcmp(salons[i]->nom, canal) == 0){
+            //On a trouvé le channel vers lequel le client souhaite se connecter, on ajoute donc le client a ce channel 
+            nonExist = 0;
+            int j = 0;
+            int nonFini = 1;
+            //On supprime le client du channel auquel il est connecté avant
+            while(salons[j] != NULL && nonFini){
+                if(strcmp(salons[j]->nom, getCanalClient(utilisateursConnectes, socket)) == 0){
+                    supprimer_client(salons[j], socket);
+                    nonFini = 0;
+                }
+                j++;
+            }
+            ajouter_client(salons[i], socket); 
+
+            if(nonFini){
+                printf("Le client n'appartenait à aucun canal\n");
+            }
+            if(modifierCanalClient(utilisateursConnectes, socket, canal) == -1){
+                perror("[-] Erreur dans la mise à jour du canal du client");
+                exit(-1);
+            }
+        }
+        i++;
+    }
+    if(nonExist){
+        strcat(data, "-!---Le canal que vous avez saisi n'existe pas---!-\n\n");
+    }
+    else{
+        strcat(data, " [+] Vous avez réussi à changer de canal en passant au canal : ");
+        strcat(data, getCanalClient(utilisateursConnectes, socket));
+        strcat(data, "\n\n");
+    }
+    switch(write(socket, data, 1024 * sizeof(char))){
+        case -1 :
+            perror("[-] Problème dans l'envoi des infos pour le changement de canal");
+            exit(-1);
+        case 0 : 
+            perror("[-] La socket a été fermée par le client");
+            exit(-1);
+    }
+}
+
+
+/**
  * @brief   
  * Lister les fichiers disponible dans un dossier
  * et retourner le nombre
@@ -462,7 +717,40 @@ void listesFichierDansDos(char * dossier, int socket)
                 printf("La liste des fichiers existants a bien été envoyé \n");
         }
     }
+}
 
+/**
+ * @brief 
+ * Renvoie la liste des différents clients connectées
+ * @param socket 
+ */
+void listeUsers(int socket){
+    char data[1024];
+    memset(data, 0, 1024*sizeof(char));
+    int taille = liste_taille(utilisateursConnectes);
+    int i = 0;
+    strcat(data, " La liste des utilisateurs est : \n");
+    Element * e = utilisateursConnectes->premier;
+    for(i; i< taille; i++){
+        strcat(data, " -> ");
+        strcat(data, e->pseudo);
+        strcat(data, " (id : ");
+        char id[3];
+        sprintf(id, "%d", e->id);
+        strcat(data, id);
+        strcat(data, ") ");
+        strcat(data,"et connecté au canal : ");
+        strcat(data, e->canal);
+        e = e->suivant;
+    }
+    switch(write(socket, data, 1024* sizeof(char))){
+        case -1 :
+            perror("Une erreur s'est produite dans l'envoi du contenu au client");
+            exit(-1);
+        case 0 : 
+            perror("La socket a été fermée par le client");
+            exit(-1);
+    }
 }
 
 
@@ -517,12 +805,15 @@ void * Relayer(void * SocketClient)
                             char * pseudo = malloc(longueurMessage* sizeof(char));
                             strcpy(pseudo, messageRecu);
                             printf("on ajoute le pseudo : %s\n",pseudo);
-                            ajouter_debut(utilisateursConnectes,socketClient, pseudo);
+                            ajouter_debut(utilisateursConnectes,socketClient, pseudo, getName(salons[0]));
                             printf("taille apres l'ajout : %d \n",liste_taille(utilisateursConnectes));
                             afficherListe(utilisateursConnectes);  
                             //une fois qu'on a réussi à connecter le client, on lance le thread qui va relayer les messages
                             nombreClientsConnectes = liste_taille(utilisateursConnectes);              
                             // chaque client à son propre identifiant 
+                            ajouter_client(salons[0], socketClient);
+                            printf("Le nombre de clients connectés a l'accueil est %d \n",salons[0]->count);
+                            afficheClients(salons[0]);
                             i++;
                         } else 
                         {
@@ -607,12 +898,32 @@ void * Relayer(void * SocketClient)
                 printf("On va procéder à l'envoi du contenu du dossier sur le serveur\n");
                 listesFichierDansDos("fichiersServeur", socketClient);
             }
+            else if(strcmp(separation[0],"/channels") == 0){
+                printf("Nous allons envoyer la liste des channels au client\n");
+                listeChannels(socketClient);
+            }
+            else if(strcmp(separation[0],"/users") == 0){
+                printf("On va vous envoyer la liste des utilisateurs connectés...\n");
+                listeUsers(socketClient);
+            }
+            else if(strcmp(separation[0],"join") == 0){
+                printf("On va essayer de joindre un nouveau channel\n");
+                changementCanal(SocketClient, separation[1]);       
+            }
+            else if(strcmp(separation[0],"createChannel") == 0){
+                printf("On va procéder a la creation du channel\n");
+                createChannel(socketClient);
+            }
+            else if(strcmp(separation[0],"infoChannels") == 0) {
+                printf("On va vous envoyer les informations des channels...\n\n");
+                infosChannels(socketClient);
+            }
             else
             {
                 printf("on est dans default case \n");
                 strcpy(messageEnvoi,message);    
                 pthread_mutex_lock(&mutex);
-                    EnvoyerMessage(socketClient, messageEnvoi);        
+                EnvoyerMessage(socketClient, messageEnvoi);        
                 pthread_mutex_unlock(&mutex);
             }
         }         
@@ -680,9 +991,10 @@ int main(int argc, char * argv[])
     printf("[+]Socket attached with success!\n");
 
     //Création du salon d'accueil et initialisations à NULL du tableau de salons
-    Channel * accueil = cree_Channel("Accueil", "Salon principal d'accueil des nouveaux clients", 20);
-    int j = 0;
-    for (j; j < salons.length;  )
+    memset(salons, 0, sizeofArraySalons * sizeof(Channel *));
+    salons[0] = cree_Channel("Accueil", "Salon principal d'accueil des nouveaux clients", 20);
+    salons[1] = cree_Channel("IG", "Channel spécial pour les etudiants en IG", 25);
+    salons[2] = cree_Channel("MAT", "Channel spécial pour les Matériaux", 10);
 
 
     // maximum 10 clients dans la fille

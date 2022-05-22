@@ -345,6 +345,76 @@ void procFichier(int socket)
 }
 
 
+
+
+/**
+ * @brief Create a Channel object
+ * Fonction qui permet la création d'un channel en envoyant à la suite les différentes informations
+ * @param socket 
+ */
+void createChannel(void * socketClient){
+    int socket = (long) socketClient;
+
+    // Tout d'abord on vérifie côté serveur si il est possible de créer un serveur
+    char * reponse = malloc(100 * sizeof(char));
+    switch(read(socket, reponse, 100*sizeof(char))){
+        case -1:
+            perror("[-]Erreur rencontrée dans l'envoi du nom du channel");
+            exit(-1);
+        case 0:
+            perror("La socket a été fermée par le serveur");
+            exit(-1);
+    }
+
+    if(strcmp(reponse, "impossible") == 0){
+        //on ne peut pas créer de channel
+        printf("[!]Il ne reste plus de place pour créer un nouveau channel sur le serveur\n");
+        return ;
+    }
+
+    // 1 ) On envoie le nom du channel
+    char * name = malloc(100*sizeof(char));
+    printf("Quel est le nom que vous voulez donné au channel ? \n");
+    fgets(name, 100*sizeof(char), stdin);
+    switch(write(socket, name, 100*sizeof(char))){
+        case -1:
+            perror("[-]Erreur rencontrée dans l'envoi du nom du channel");
+            exit(-1);
+        case 0:
+            perror("La socket a été fermée par le serveur");
+            exit(-1);
+    }
+
+    // 2) Description du channel
+    char * description = malloc(1024 * sizeof(char));
+    printf("Quelle est sa description ?\n");
+    fgets(description,  1024 * sizeof(char), stdin);
+    switch(write(socket, description, 1024*sizeof(char))){
+        case -1:
+            perror("[-]Erreur rencontrée dans l'envoi de la description du channel");
+            exit(-1);
+        case 0:
+            perror("La socket a été fermée par le serveur");
+            exit(-1);
+    }
+
+    // 3) Envoi de la taille maximum du channel
+    char * tailleMax = malloc(5*sizeof(char));
+    printf("Quelle est sa taille maximum ?\n");
+    fgets(tailleMax, 5*sizeof(char),stdin);
+    printf("La taille max saisie est : %s\n", tailleMax);
+    switch(write(socket, tailleMax, 5*sizeof(char))){
+        case -1:
+            perror("[-]Erreur rencontrée dans l'envoi de la taille du channel");
+            exit(-1);
+        case 0:
+            perror("La socket a été fermée par le serveur");
+            exit(-1);
+    }
+}
+
+
+
 /**
  * @brief 
  * Thread qui s'occupe des envois de messages du client au serveur
@@ -389,7 +459,12 @@ void * Envoyer(void * socketClient)
                         kill(getppid(), SIGTERM);
                         exit(0);
                     }
-                    printf("Message %s envoyé avec succés ☻ (%d octets)\n",messageEnvoi,ecrits);
+                    else if(strcmp(messageEnvoi, "createChannel") == 0){
+                        createChannel(socketClient);
+                    }
+                    else{
+                         printf("Message %s envoyé avec succés ☻ (%d octets)\n",messageEnvoi,ecrits);
+                    }
             }
         }
     }
@@ -495,8 +570,7 @@ int main(int argc, char *argv[])
     printf("Connection reussi avec the server \n");
 
     printf("status %d\n", status);
-    connection(socketClient);
-    
+    connection(socketClient);    
 
     pthread_create(&tRecepteur, NULL, Recevoir, (void *) socketClient);
     pthread_create(&tEcouter, NULL, Envoyer, (void *) socketClient);

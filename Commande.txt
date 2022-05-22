@@ -1,5 +1,5 @@
 ===================================================
-Toutes Les commandes Possible Pour Les Messages
+Toutes Les commandes Possibles Pour Les Messages
 
 @ User Message
 
@@ -15,10 +15,25 @@ Message
 Liste des commandes
 /help
 
+Pour envoyer un fichier qui sera enregistré sur le serveur
 file
-choose a file to send to the server and save it
 
 Consulter les fichiers disponibles côté Serveur
 /files
+
+Accéder aux clients connectés
+/users
+
+Consulter les channels existants
+/channels
+
+Créer un channel
+createChannel
+
+Rejoindre un channel
+join "NomDuChannel"
+
+Les informations sur les channels
+infoChannels
 
 ===================================================
