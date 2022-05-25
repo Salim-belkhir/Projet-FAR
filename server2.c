@@ -218,6 +218,7 @@ void EnvoyerMessageSpe(int socketClient, char * Message, char * client, char * c
  */
 void EnvoyerMessage(int socketClient, char * Message)
 {   
+    printf("cc\n");
     //On récupére le channel auquel le client est attaché
     char * salon = getCanalClient(utilisateursConnectes, socketClient);
     int ecrits;
@@ -236,21 +237,25 @@ void EnvoyerMessage(int socketClient, char * Message)
     int i = 0;
     int dontFind = 1;
     //On cherche le salon qui est associé au client
-    while(i < sizeofArraySalons && salons[i] != NULL && dontFind){
+    while(i < 3 && dontFind){
+        printf("i == %d\n",i);
         if(strcmp(salons[i]->nom,salon) == 0){
             //On a trouvé la position du channel dans le tableau de salons
+            printf("on a trouver %s\n", salons[i]->nom);
             dontFind = 0;
+        } else {
+            i++;
         }
-        i++;
     }
-    i--;
+
     printf("J'ai trouvé l'indice du channel actuel : %d \n", i);
     int j = 0;
     //On envoie le message à tous les clients connectés au channel
     while(j < getCount(salons[i])){
         printf("Je suis dans le while \n");
-        if(salons[i]->clients[j] != socketClient){
-            printf("Le %d er client a qui il faut envoyer : %ld \n", getClients(salons[i])[j]);
+        if(salons[i]->clients[j] != socketClient)
+        {
+            printf("Le %d er client a qui il faut envoyer : %d \n", j,getClients(salons[i])[j]);
             switch(write(salons[i]->clients[j], messageEnvoi, strlen(messageEnvoi)* sizeof(char)))
             {
                 case -1: 
@@ -631,42 +636,48 @@ void changementCanal(void * SocketClient, char * canal){
     int socket = (long) SocketClient;
     int nonExist = 1;
     int i = 0;
-    char data[1024];
+    char data[1024]; // reponse a envoyé au client
     memset(data, 0, 1024*sizeof(char));
-    while(salons[i] != NULL && nonExist){
+    while(i < 3 && nonExist)
+    {
         //on cherche d'abord parmi tous les salons si un d'entre eux porte ce nom
-        if(strcmp(salons[i]->nom, canal) == 0){
+        if(strcmp(salons[i]->nom, canal) == 0)
+        {
             //On a trouvé le channel vers lequel le client souhaite se connecter, on ajoute donc le client a ce channel 
             nonExist = 0;
             int j = 0;
             int nonFini = 1;
             //On supprime le client du channel auquel il est connecté avant
-            while(salons[j] != NULL && nonFini){
+            while(j < 3 && nonFini)
+            {
                 if(strcmp(salons[j]->nom, getCanalClient(utilisateursConnectes, socket)) == 0){
                     supprimer_client(salons[j], socket);
                     nonFini = 0;
                 }
                 j++;
             }
-            ajouter_client(salons[i], socket); 
 
-            if(nonFini){
+            ajouter_client(salons[i], socket); 
+            afficheClients(salons[i]);
+            if(nonFini)
+            {
+                nonFini = 0;
                 printf("Le client n'appartenait à aucun canal\n");
             }
+
             if(modifierCanalClient(utilisateursConnectes, socket, canal) == -1){
-                perror("[-] Erreur dans la mise à jour du canal du client");
-                exit(-1);
+                perror("erreur dans la modification du channel du client \n");
             }
         }
         i++;
-    }
+    } 
     if(nonExist){
         strcat(data, "-!---Le canal que vous avez saisi n'existe pas---!-\n\n");
     }
     else{
         strcat(data, " [+] Vous avez réussi à changer de canal en passant au canal : ");
         strcat(data, getCanalClient(utilisateursConnectes, socket));
-        strcat(data, "\n\n");
+        strcat(data, "\n");
     }
     switch(write(socket, data, 1024 * sizeof(char))){
         case -1 :
@@ -728,10 +739,11 @@ void listeUsers(int socket){
     char data[1024];
     memset(data, 0, 1024*sizeof(char));
     int taille = liste_taille(utilisateursConnectes);
-    int i = 0;
+    int i;
     strcat(data, " La liste des utilisateurs est : \n");
     Element * e = utilisateursConnectes->premier;
-    for(i; i< taille; i++){
+    for(i = 0; i< taille; i++)
+    {
         strcat(data, " -> ");
         strcat(data, e->pseudo);
         strcat(data, " (id : ");
@@ -741,6 +753,7 @@ void listeUsers(int socket){
         strcat(data, ") ");
         strcat(data,"et connecté au canal : ");
         strcat(data, e->canal);
+        strcat(data, "\n");
         e = e->suivant;
     }
     switch(write(socket, data, 1024* sizeof(char))){
@@ -804,8 +817,10 @@ void * Relayer(void * SocketClient)
                             printf("on ajoute : %d a la file\n", socketClient);
                             char * pseudo = malloc(longueurMessage* sizeof(char));
                             strcpy(pseudo, messageRecu);
-                            printf("on ajoute le pseudo : %s\n",pseudo);
-                            ajouter_debut(utilisateursConnectes,socketClient, pseudo, getName(salons[0]));
+                            char * canal = malloc(longueurMessage* sizeof(char));
+                            strcpy(canal, getName(salons[0]));
+                            printf("on ajoute le pseudo : %s au canal %s\n",pseudo, canal);
+                            ajouter_debut(utilisateursConnectes,socketClient, pseudo, canal);
                             printf("taille apres l'ajout : %d \n",liste_taille(utilisateursConnectes));
                             afficherListe(utilisateursConnectes);  
                             //une fois qu'on a réussi à connecter le client, on lance le thread qui va relayer les messages

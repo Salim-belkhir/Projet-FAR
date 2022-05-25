@@ -185,7 +185,6 @@ void supprimer_client(Channel * channel, int id){
             printf("%s", channel->nom);
             exit(-1);
         }
-
         i--;
         while(channel->clients[i] != NULL){
             channel->clients[i-1] = channel->clients[i];

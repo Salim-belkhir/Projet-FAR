@@ -65,7 +65,7 @@ char * getCanalClient(liste * li, int id){
     while(e!= NULL && nonTrouve){
         if(e->id == id){
             nonTrouve = 0;
-            strcat(channel, e->canal);
+            strcpy(channel, e->canal);
         }
     }
     if(e == NULL){
@@ -93,14 +93,11 @@ int modifierCanalClient(liste * l, int id, char * canal){
     int nonFini = 1;
     Element * e = l->premier;
     while(e != NULL && nonFini){
-        if(e-> id == id){
-            printf("Le canal actuel du client est : %s et la taille du mot : %ld et le canal en parametre : %ld \n", e->canal, strlen(e->canal), strlen(canal));
-            printf("Le canal apres vidage du client est : %s \n", e->canal);
+        if(e->id == id){
             strcpy(e->canal, canal);
-            printf("Le nouveau canal du client est : %s \n", e->canal);
             nonFini = 0;
         }
-    e = e->suivant;
+        e = e->suivant;
     }
     if(nonFini){
         return -1;
