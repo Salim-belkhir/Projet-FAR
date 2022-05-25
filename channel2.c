@@ -1,7 +1,7 @@
 #include <stdio.h> 
 #include <stdlib.h>
 #include "channel2.h"
-
+#include <string.h>
 /**
  * @brief 
  * Fonction qui crée un Channel vide
@@ -16,10 +16,10 @@ Channel * cree_Channel(char * name, char* descr,int capacity){
         exit(-1);
     }
     Channel* channel = malloc(sizeof(Channel*));
-    channel->nom = malloc(50*sizeof(char));
+    channel->nom = malloc(10000*sizeof(char));
     channel->description = malloc(128*sizeof(char)); 
-    channel->nom = name;
-    channel->description = descr; 
+    strcpy(channel->nom,name);
+    strcpy(channel->description,descr); 
     channel->count = 0;
     channel->capacity = capacity;
     channel->clients = malloc(capacity*sizeof(int));
@@ -186,6 +186,7 @@ void supprimer_client(Channel * channel, int id){
             exit(-1);
         }
 
+        i--;
         while(channel->clients[i] != NULL){
             channel->clients[i-1] = channel->clients[i];
             channel->clients[i] = NULL;
