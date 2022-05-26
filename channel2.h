@@ -30,6 +30,7 @@ int appartenir(Channel * channel, int id);
 
 int ajouter_client(Channel * channel, int id);
 
+void afficheClients(Channel * channel);
 void supprimer_client(Channel * channel, int id);
 
 //void supprimer_Channel(Channel * Channel);

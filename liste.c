@@ -24,7 +24,7 @@ liste * cree_liste()
     element->suivant = NULL;
     element -> precedent = NULL;
     element -> pseudo = NULL;
-    element -> canal = NULL;
+    element -> canal = malloc(100*sizeof(char));
     Liste->premier = element;
     return Liste;
 }
@@ -67,8 +67,9 @@ char * getCanalClient(liste * li, int id){
             nonTrouve = 0;
             strcpy(channel, e->canal);
         }
+        e = e->suivant;
     }
-    if(e == NULL){
+    if(e == NULL || nonTrouve){
         perror("Client non existant");
         exit(-1);
     }

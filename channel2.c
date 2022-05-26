@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "channel2.h"
 #include <string.h>
+
 /**
  * @brief 
  * Fonction qui crée un Channel vide
@@ -16,13 +17,18 @@ Channel * cree_Channel(char * name, char* descr,int capacity){
         exit(-1);
     }
     Channel* channel = malloc(sizeof(Channel*));
-    channel->nom = malloc(10000*sizeof(char));
+    channel->nom = malloc(100*sizeof(char));
     channel->description = malloc(128*sizeof(char)); 
     strcpy(channel->nom,name);
     strcpy(channel->description,descr); 
     channel->count = 0;
     channel->capacity = capacity;
     channel->clients = malloc(capacity*sizeof(int));
+    // le tableau des clients est initialiser à -1 Aucun client n'est enregistrer.
+    for(int i=0; i<capacity; i++) 
+    {
+        channel->clients[i] = -1;
+    }
     return channel;
 }
 
@@ -118,7 +124,7 @@ int appartenir(Channel * channel, int id){
  * @param newName nouveau nom du channel
  */
 void setName(Channel * channel, char * newName){
-    channel->nom = newName;
+    strcpy(channel->nom,newName);
 }
 
 /**
@@ -128,7 +134,7 @@ void setName(Channel * channel, char * newName){
  * @param newDescr nouvelle description du channel
  */
 void setDescription(Channel * channel, char * newDescr){
-    channel->description = newDescr;
+    strcpy(channel->description,newDescr);
 }
 
 /**
@@ -146,7 +152,7 @@ int ajouter_client(Channel * channel, int id){
     int i =0;
     int nonInsere = 1;
     while(i<channel->capacity && nonInsere){
-        if(channel->clients[i] == NULL){
+        if(channel->clients[i] == -1){
             channel->clients[i] = id;
             nonInsere = 0;
         }
@@ -171,7 +177,7 @@ void supprimer_client(Channel * channel, int id){
         int i = 0; 
         while(i<channel->capacity && nonSupprime){
             if(channel->clients[i] == id){
-                channel->clients[i] = NULL;
+                channel->clients[i] = -1;
                 nonSupprime = 0;
                 channel->count--;
             }
@@ -185,10 +191,11 @@ void supprimer_client(Channel * channel, int id){
             printf("%s", channel->nom);
             exit(-1);
         }
+
         i--;
-        while(channel->clients[i] != NULL){
+        while(channel->clients[i] != -1){
             channel->clients[i-1] = channel->clients[i];
-            channel->clients[i] = NULL;
+            channel->clients[i] = -1;
             i++;
         }
     }
@@ -225,7 +232,9 @@ void deconnecterTousClients(Channel * channel){
         supprimer_client(channel,channel->clients[i]);
     }
 }
+
 /*
+
 int main(int argc, char const *argv[])
 {
     printf ("\033[36;01mMain test de Channel\033[00m\n");
@@ -293,4 +302,6 @@ int main(int argc, char const *argv[])
     //void supprimer_Channel(Channel * Channel);
 
     return 0;
-}*/
+
+}
+*/

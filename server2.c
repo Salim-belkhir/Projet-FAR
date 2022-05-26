@@ -218,15 +218,15 @@ void EnvoyerMessageSpe(int socketClient, char * Message, char * client, char * c
  */
 void EnvoyerMessage(int socketClient, char * Message)
 {   
-    printf("cc\n");
     //On récupére le channel auquel le client est attaché
-    char * salon = getCanalClient(utilisateursConnectes, socketClient);
+    char * salon = malloc(100*sizeof(char));
+    strcpy(salon,getCanalClient(utilisateursConnectes, socketClient));
     int ecrits;
     char * messageEnvoi = malloc(longueurMessage*sizeof(char));
     memset(messageEnvoi, 0, longueurMessage*sizeof(char)); 
     strcat(messageEnvoi,"▬▬▬ MESSAGE A TOUT LE CHANNEL ▬▬▬\n");
     strcat(messageEnvoi,"▬ ");
-    strcat(messageEnvoi,pseudoParID(socketClient));
+    strcat(messageEnvoi, pseudoParID(socketClient));
     strcat(messageEnvoi," ▬");
     strcat(messageEnvoi," a envoyé ce message à tous les membres du canal '");
     strcat(messageEnvoi,salon);
@@ -238,32 +238,29 @@ void EnvoyerMessage(int socketClient, char * Message)
     int dontFind = 1;
     //On cherche le salon qui est associé au client
     while(i < 3 && dontFind){
-        printf("i == %d\n",i);
         if(strcmp(salons[i]->nom,salon) == 0){
             //On a trouvé la position du channel dans le tableau de salons
-            printf("on a trouver %s\n", salons[i]->nom);
             dontFind = 0;
         } else {
             i++;
         }
     }
 
-    printf("J'ai trouvé l'indice du channel actuel : %d \n", i);
+    printf("J'ai trouvé l'indice du channel %s : %d \n", salons[i]->nom, i);
     int j = 0;
     //On envoie le message à tous les clients connectés au channel
     while(j < getCount(salons[i])){
-        printf("Je suis dans le while \n");
         if(salons[i]->clients[j] != socketClient)
         {
             printf("Le %d er client a qui il faut envoyer : %d \n", j,getClients(salons[i])[j]);
             switch(write(salons[i]->clients[j], messageEnvoi, strlen(messageEnvoi)* sizeof(char)))
             {
                 case -1: 
-                    perror("[-]Problem of send the message");
+                    perror("[-]Probleme a l'envoi du message");
                     closeAllsockets(utilisateursConnectes);
                     exit(-6);
                 case 0:
-                    fprintf(stderr, "[!]The socket was closed by the client !\n\n");
+                    fprintf(stderr, "[!]La socket a été fermée par le client!\n\n");
                     closeAllsockets(utilisateursConnectes);
                 default:
                     printf("Message %s envoyé avec succés (%d octets)\n\n",Message,ecrits);
@@ -272,7 +269,8 @@ void EnvoyerMessage(int socketClient, char * Message)
         j++;
     }
 
-    /*Element * actuel = utilisateursConnectes -> premier;
+    /*
+    Element * actuel = utilisateursConnectes -> premier;
     while(actuel -> suivant != NULL && liste_taille(utilisateursConnectes) > 0)
     {
         if(socketClient != actuel -> id)
@@ -292,7 +290,8 @@ void EnvoyerMessage(int socketClient, char * Message)
             }
         } 
         actuel = actuel->suivant;
-    }*/
+    }
+    */
 }
 
 
@@ -817,7 +816,7 @@ void * Relayer(void * SocketClient)
                             printf("on ajoute : %d a la file\n", socketClient);
                             char * pseudo = malloc(longueurMessage* sizeof(char));
                             strcpy(pseudo, messageRecu);
-                            char * canal = malloc(longueurMessage* sizeof(char));
+                            char * canal = malloc(100* sizeof(char));
                             strcpy(canal, getName(salons[0]));
                             printf("on ajoute le pseudo : %s au canal %s\n",pseudo, canal);
                             ajouter_debut(utilisateursConnectes,socketClient, pseudo, canal);
