@@ -137,6 +137,11 @@ void setDescription(Channel * channel, char * newDescr){
     strcpy(channel->description,newDescr);
 }
 
+
+void setCapacity(Channel * channel,int capacity){
+    channel->capacity = capacity;
+}
+
 /**
  * @brief 
  * fonction qui ajoute un client à un Channel

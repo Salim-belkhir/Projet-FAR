@@ -26,6 +26,8 @@ void setName(Channel * channel, char * newName);
 
 void setDescription(Channel * channel, char * newDescr);
 
+void setCapacity(Channel * channel,int capacity);
+
 int appartenir(Channel * channel, int id);
 
 int ajouter_client(Channel * channel, int id);
