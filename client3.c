@@ -69,6 +69,46 @@ char ** Separation(char * message){
     return msg;
 }
 
+
+/**
+ * @brief fonction qui permet de séparer le nom du fichier en 2 pour récupérer l'extension
+ * 
+ * @param message Chaine de charactères de laquelle on doit extraire une partie
+ * @return char** 
+ */
+char ** SeparationNameFichier(char * filename){
+    // Allocation de la memoire
+    char ** msg = malloc(longueurMessage*sizeof(char *));
+    int i;
+    for(i=0; i<2;i++)
+    {
+        msg[i] = malloc(longueurMessage*sizeof(char));
+    }
+
+    // La définition de séparateurs connus
+    const char * separators = ".";
+    
+    // On cherche à récupérer, un à un, tous les mots (token) de la phrase et on commence par le premier
+    char * strToken = malloc(longueurMessage*sizeof(char));
+    strToken = strtok ( filename, separators );
+    
+    i = 0;
+    while ( strToken != NULL ) {
+        msg[i] = strToken;
+        // On demande le token suivant
+        if(i < 1)
+        {
+            strToken = strtok( NULL, separators );
+        } else {
+            strToken = strtok( NULL, "");
+        }
+        i++;
+    }
+    return msg;
+}
+
+
+
 /**
  * @brief 
  * liste les commandes pour les différents modes de message possibles
@@ -105,8 +145,13 @@ void connection(int socketClient)
         memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
         if( i < 1)
         {
-            strcpy(messageEnvoi, "tentative de connexion");
-        } else {            
+            printf("\nVoulez-vous vous connecter à votre compte ? (o/n)\n");
+            printf("→ ");
+            fgets(messageEnvoi, longueurMessage*sizeof(char),stdin);
+            messageEnvoi[strlen(messageEnvoi) - 1]= 0;
+            //strcpy(messageEnvoi, "tentative de connexion");
+        } 
+        else {            
             fgets(messageEnvoi, longueurMessage*sizeof(char),stdin);
             messageEnvoi[strlen(messageEnvoi) - 1]= 0;
         }
@@ -124,7 +169,25 @@ void connection(int socketClient)
             default:
                 if( i < 1)
                 {
-                    printf("Demande de connexion ...\n");
+                    if(strcmp(messageEnvoi, "o") == 0){
+                        printf("Quels sont vos identifiants ?  'pseudo mdp' \n");
+                        printf("→ ");
+                    }
+                    else{
+                        printf("Quel pseudo et mot de passe choisissez-vous ?  'pseudo mdp' \n");
+                        printf("→ ");
+                    }
+                    fgets(messageEnvoi, longueurMessage*sizeof(char),stdin);
+                        messageEnvoi[strlen(messageEnvoi) - 1]= 0;
+                        switch(write(socket, messageEnvoi, longueurMessage * sizeof(char))){
+                            case -1 :
+                                perror("[-] Erreur dans l'envoi des identifiants");
+                                exit(-1);
+                            case 0 :
+                                perror("La socket a été fermée par le serveur");
+                                exit(-1);
+                        }
+                    printf("\nDemande de connexion ...\n");
                 } else {            
                     printf("Pseudo %s envoyé avec succés ☻ (%d octets)\n",messageEnvoi,ecrits);
                 }
@@ -154,9 +217,15 @@ void connection(int socketClient)
                         break;
                     }else if(strcmp(messageRecu, "invalide") == 0)
                     {
-                        printf("\nLe pseudo choisit exist déja !!\n");
+                        printf("\nLe pseudo choisit existe déja !!\n");
                         printf("Choisissez un autre pseudo\n");
                         printf("→ ");   
+                    }
+                    else if(strcmp(messageRecu, "Mot de passe invalide") == 0){
+                        printf("\n[!] Le mot de passe est erroné\n");
+                    }
+                    else if(strcmp(messageRecu, "Votre identifiant est erroné") == 0){
+                        printf("\n[!] Votre identifiant n'existe pas\n");
                     }
                     else {
                         i++;
@@ -311,8 +380,15 @@ void  * envoiFile(void * fileName){
     
 
     // 3) On ouvre le fichier pour en extraire le contenu et l'envoyer
-    FILE * fp = fopen(path,"r");
-    
+    char ** separation = SeparationNameFichier(fileName);
+    FILE * fp ;
+    if(strcmp(separation[1], "txt") == 0){
+        fp = fopen(path,"r");
+    }
+    else{
+        fp = fopen(path,"rb");
+    }
+
     if (fp == NULL) {
         perror("[-]Le fichier n'a pas pu être lu ou est introuvable ! \n");
         exit(1);
