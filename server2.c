@@ -885,6 +885,14 @@ void * Relayer(void * SocketClient)
             {
                 //déconnexion côté client, on le supprime de la liste des utilisateurs connectés
                 printf("La discussion est finie avec le client numéro : %d\n", socketClient);
+                int i;
+                for(i = 0; i < nombreSalons; i++)
+                {
+                    if(strcmp(getCanalClient(utilisateursConnectes, socketClient), getName(salons[i])) == 0 )
+                    {
+                        supprimer_client(salons[i], socketClient);
+                    }
+                }
                 supprimer_val(utilisateursConnectes, socketClient);
                 nombreClientsConnectes = liste_taille(utilisateursConnectes);
                 printf("La taille actuelle après déconnexion est de : %d\n", liste_taille(utilisateursConnectes));
