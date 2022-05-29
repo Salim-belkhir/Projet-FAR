@@ -21,6 +21,8 @@
 
 Channel * salons[sizeofArraySalons];
 
+int nombreSalons;
+
 char * ip;   //adresse IP
 
 int port;  //numéro de port de connexion
@@ -415,14 +417,12 @@ void listeChannels(int socket){
     }
 }
 
-
-
-
 /**
  * @brief 
- * thread qui s'occupe de la réception d'un fichier envoyé par un client
+ * 
  */
-void * receptionFichier(){
+int * createNewSocket()
+{
     int socketServeur2;
     struct sockaddr_in pointDeRencontreLocal;
     socklen_t longueurAdresse;
@@ -494,8 +494,27 @@ void * receptionFichier(){
         close(socketServeur2);
         exit(-4);
     }
+    int * tabSockets = malloc(2*sizeof(int));
+    tabSockets[0]  = socketClient2;
+    tabSockets[1]  = socketServeur2;
     printf("On a reussi à connecter le client \n");
- 
+    return tabSockets;
+}
+
+
+
+/**
+ * @brief 
+ * thread qui s'occupe de la réception d'un fichier envoyé par un client
+ */
+void * receptionFichier(){
+    
+    int * tabSockets = malloc(2*sizeof(int));
+    tabSockets = createNewSocket();
+        
+    int socketClient2 = tabSockets[0];
+    int socketServeur2 = tabSockets[1];
+
     //1) récupération du nom de fichier
     char * name = malloc(50*sizeof(char));
     int readName = read(socketClient2, name, 50*sizeof(char));
@@ -549,17 +568,14 @@ void * receptionFichier(){
  * Crée un nouveau channel et l'ajoute au tableau de channels
  * @param socket 
  */
-void createChannel(int socket){
+void * createCanal(){
+    int * tabSockets = malloc(2*sizeof(int));
+    tabSockets = createNewSocket();
+        
+    int socket = tabSockets[0];
+    int socketServeur2 = tabSockets[1];
     // 1) On vérifie si il reste de la place dans le serveur pour un nouveau channel
-    int reste = 1;
-    int i = 0;
-    while(i < sizeofArraySalons && reste){
-        if(salons[i] == NULL){
-            reste = 0;
-        }
-        i++;
-    }
-    if(reste){
+    if(nombreSalons >= sizeofArraySalons){
         switch(write(socket, "impossible", 100 * sizeof(char))){
             case -1 :
                 perror("[-] Problème dans l'envoi du diagnostic");
@@ -569,7 +585,9 @@ void createChannel(int socket){
                 exit(-1);
         }
         printf("[!] Il ne reste plus de places pour un nouveau channel\n");
-        return ;
+        close(socketServeur2);
+        close(socket);
+        pthread_exit(0);
     }
     else{
         switch(write(socket, "possible", 100 * sizeof(char))){
@@ -618,8 +636,13 @@ void createChannel(int socket){
     }
     int taille = atoi(tailleMax);
     printf("La taille max est %d\n", taille);
+    salons[nombreSalons] = cree_Channel(name, description, taille);
+    nombreSalons += 1;
 
-    salons[i-1] = cree_Channel(name, description, taille);
+    // fin de la creation du canal
+    close(socketServeur2);
+    close(socket);
+    pthread_exit(0);
 }
 
 
@@ -637,7 +660,7 @@ void changementCanal(void * SocketClient, char * canal){
     int i = 0;
     char data[1024]; // reponse a envoyé au client
     memset(data, 0, 1024*sizeof(char));
-    while(i < 3 && nonExist)
+    while(i < nombreSalons && nonExist)
     {
         //on cherche d'abord parmi tous les salons si un d'entre eux porte ce nom
         if(strcmp(salons[i]->nom, canal) == 0)
@@ -647,7 +670,7 @@ void changementCanal(void * SocketClient, char * canal){
             int j = 0;
             int nonFini = 1;
             //On supprime le client du channel auquel il est connecté avant
-            while(j < 3 && nonFini)
+            while(j < nombreSalons && nonFini)
             {
                 if(strcmp(salons[j]->nom, getCanalClient(utilisateursConnectes, socket)) == 0){
                     supprimer_client(salons[j], socket);
@@ -926,7 +949,9 @@ void * Relayer(void * SocketClient)
             }
             else if(strcmp(separation[0],"createChannel") == 0){
                 printf("On va procéder a la creation du channel\n");
-                createChannel(socketClient);
+                pthread_t tCanal;
+                pthread_create(&tCanal, NULL, createCanal, NULL);
+                pthread_join(tCanal, NULL);
             }
             else if(strcmp(separation[0],"infoChannels") == 0) {
                 printf("On va vous envoyer les informations des channels...\n\n");
@@ -1009,6 +1034,7 @@ int main(int argc, char * argv[])
     salons[0] = cree_Channel("Accueil", "Salon principal d'accueil des nouveaux clients", 20);
     salons[1] = cree_Channel("IG", "Channel spécial pour les etudiants en IG", 25);
     salons[2] = cree_Channel("MAT", "Channel spécial pour les Matériaux", 10);
+    nombreSalons = 3;
 
 
     // maximum 10 clients dans la fille

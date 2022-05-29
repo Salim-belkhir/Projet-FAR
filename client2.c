@@ -177,16 +177,9 @@ int tailleFile(char * filename){
 
 
 
-/**
- * @brief 
- * Thread qui s'occupe de l'envoi d'un fichier vers le serveur 
- * @param fileName Nom du fichier à envoyer 
- */
-void  * envoiFile(void * fileName){
-
-    char * filename = (char *) fileName;
-
-    // On va créer une nouvelle connexion avec le serveur sur un nouveau port pour 
+int createNewSocket()
+{
+     // On va créer une nouvelle connexion avec le serveur sur un nouveau port pour 
     // l'envoi du fichier sans interferer avec l'envoi et la réception de messages 
     long socketClient;
     struct sockaddr_in pointDeRencontreDistant;
@@ -204,7 +197,6 @@ void  * envoiFile(void * fileName){
         perror("socket echoué");
         exit(-1); // On sort en indiquant un code erreur
     }
-    printf("la Socket pour envoyer les fichiers a été bien créé ! (%ld)\n", socketClient);
     
     
     longueurAdresse = sizeof(pointDeRencontreDistant);
@@ -227,8 +219,20 @@ void  * envoiFile(void * fileName){
         close(socketClient); // on ferme la ressourece pour quitter
         exit(-2);
     }
-    printf("Connection reussi avec the server \n");
+    return socketClient;
+}
 
+
+/**
+ * @brief 
+ * Thread qui s'occupe de l'envoi d'un fichier vers le serveur 
+ * @param fileName Nom du fichier à envoyer 
+ */
+void  * envoiFile(void * fileName){
+
+    char * filename = (char *) fileName;
+
+    int socketClient = createNewSocket();  
     /*  La connexion est réussie, on peut donc commencer l'envoi du fichier  */
 
 
@@ -352,8 +356,8 @@ void procFichier(int socket)
  * Fonction qui permet la création d'un channel en envoyant à la suite les différentes informations
  * @param socket 
  */
-void createChannel(void * socketClient){
-    int socket = (long) socketClient;
+void createChannel(){
+    int socket = createNewSocket();
 
     // Tout d'abord on vérifie côté serveur si il est possible de créer un serveur
     char * reponse = malloc(100 * sizeof(char));
@@ -376,6 +380,7 @@ void createChannel(void * socketClient){
     char * name = malloc(100*sizeof(char));
     printf("Quel est le nom que vous voulez donné au channel ? \n");
     fgets(name, 100*sizeof(char), stdin);
+    name[strlen(name) - 1]=0;
     switch(write(socket, name, 100*sizeof(char))){
         case -1:
             perror("[-]Erreur rencontrée dans l'envoi du nom du channel");
@@ -389,6 +394,7 @@ void createChannel(void * socketClient){
     char * description = malloc(1024 * sizeof(char));
     printf("Quelle est sa description ?\n");
     fgets(description,  1024 * sizeof(char), stdin);
+    description[strlen(description) - 1]=0;
     switch(write(socket, description, 1024*sizeof(char))){
         case -1:
             perror("[-]Erreur rencontrée dans l'envoi de la description du channel");
@@ -403,6 +409,7 @@ void createChannel(void * socketClient){
     printf("Quelle est sa taille maximum ?\n");
     fgets(tailleMax, 5*sizeof(char),stdin);
     printf("La taille max saisie est : %s\n", tailleMax);
+    tailleMax[strlen(tailleMax) - 1]=0;
     switch(write(socket, tailleMax, 5*sizeof(char))){
         case -1:
             perror("[-]Erreur rencontrée dans l'envoi de la taille du channel");
@@ -460,7 +467,7 @@ void * Envoyer(void * socketClient)
                         exit(0);
                     }
                     else if(strcmp(messageEnvoi, "createChannel") == 0){
-                        createChannel(socketClient);
+                        createChannel();
                     }
                     else{
                          printf("Message %s envoyé avec succés ☻ (%d octets)\n",messageEnvoi,ecrits);
