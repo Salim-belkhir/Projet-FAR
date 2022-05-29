@@ -665,6 +665,12 @@ void changementCanal(void * SocketClient, char * canal){
         //on cherche d'abord parmi tous les salons si un d'entre eux porte ce nom
         if(strcmp(salons[i]->nom, canal) == 0)
         {
+            if(ajouter_client(salons[i], socket) == -1)
+            {
+                printf("le client ne peut pas rejoindre le canal! \n");
+                return ;
+            } 
+               
             //On a trouvé le channel vers lequel le client souhaite se connecter, on ajoute donc le client a ce channel 
             nonExist = 0;
             int j = 0;
@@ -678,8 +684,6 @@ void changementCanal(void * SocketClient, char * canal){
                 }
                 j++;
             }
-
-            ajouter_client(salons[i], socket); 
             afficheClients(salons[i]);
             if(nonFini)
             {
