@@ -21,6 +21,8 @@ liste * cree_liste()
     }
 
     element->id = 0;
+    // est ce que le client est administrateur ?  0 pour Non 1 pour Oui
+    element->admin = 0;
     element->suivant = NULL;
     element -> precedent = NULL;
     element -> pseudo = NULL;
@@ -112,12 +114,14 @@ int modifierCanalClient(liste * l, int id, char * canal){
  * fonction qui ajoute l'élément passé en paramètre au début de la liste
  * @param l Le pointeur sur la structure liste 
  * @param id L'identifiant du client à ajouter
+ * @param admin est ce que le client est administrateur ? 0 Non ou 1 Oui
  * @param pseudo Le pseudo du client 
  */
-void ajouter_debut(liste * l, int id, char * pseudo, char * canal)
+void ajouter_debut(liste * l, int id, char * pseudo, char * canal, int admin)
 {
     Element *element = malloc(sizeof(*element));
     element -> id = id;
+    element -> admin = admin;
     element -> pseudo = pseudo;
     element -> canal = canal;    
     element -> precedent = NULL;
@@ -248,7 +252,7 @@ void afficherListe(liste *liste)
     Element * actuel = liste->premier;
     while (actuel->suivant != NULL)
     {
-        printf("L'utilisateur %s (id : %d), il est connecté au channel : %s\n", actuel->pseudo, actuel->id, actuel->canal);
+        printf("L'utilisateur %s (id : %d), il est connecté au channel : %s, il est admin ? → %d\n", actuel->pseudo, actuel->id, actuel->canal,actuel->admin);
         actuel = actuel->suivant;
     }
 }

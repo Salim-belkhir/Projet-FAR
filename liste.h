@@ -5,7 +5,8 @@ struct Element
     Element *suivant;
     Element * precedent;
     char * canal;
-    char * pseudo; 
+    char * pseudo;
+    int admin; 
 };
 
 typedef struct liste liste;
@@ -19,7 +20,7 @@ liste * cree_liste();
 
 int liste_est_vide(liste * l);
 
-void ajouter_debut(liste * l, int val, char * chaine, char * canal);
+void ajouter_debut(liste * l, int val, char * chaine, char * canal, int admin);
 
 char * getCanalClient(liste * li, int id);
 

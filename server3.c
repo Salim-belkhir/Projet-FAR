@@ -10,7 +10,7 @@
 #include "liste.h"
 #include <signal.h>
 #include <dirent.h>
-#include "channel2.h"
+#include "channel.h"
 
 
 #define longueurMessage 10000

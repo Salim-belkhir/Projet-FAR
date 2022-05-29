@@ -1,4 +1,3 @@
-#include "liste.h"
 typedef struct Channel Channel;
 
 struct Channel{
@@ -6,14 +5,12 @@ struct Channel{
     char * description;
     int capacity;
     int count;
-    liste * clients;
+    int * clients;
 };
 
-Channel * cree_Channel();
+Channel * cree_Channel(char * name, char* descr,int capacity);
 
 int Channel_est_vide(Channel * channel);
-
-void  afficheClients(Channel * channel);
 
 char * getName(Channel * channel);
 
@@ -23,16 +20,19 @@ int getCapacity(Channel * channel);
 
 int getCount(Channel * channel);
 
-liste * getClients(Channel * channel);
+int* getClients(Channel * channel);
 
 void setName(Channel * channel, char * newName);
 
 void setDescription(Channel * channel, char * newDescr);
 
-void setCapicite(Channel * channel, int capacite);
+void setCapacity(Channel * channel,int capacity);
 
-void ajouter_client(Channel * channel, int id, char * pseudo);
+int appartenir(Channel * channel, int id);
 
+int ajouter_client(Channel * channel, int id);
+
+void afficheClients(Channel * channel);
 void supprimer_client(Channel * channel, int id);
 
 //void supprimer_Channel(Channel * Channel);

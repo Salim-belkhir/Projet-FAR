@@ -1,6 +1,9 @@
 ===================================================
 Toutes Les commandes Possibles Pour Les Messages
 
+Liste des commandes
+/help
+
 @ User Message
 
 Message Privé
@@ -12,8 +15,8 @@ Message urgent
 Tous le monde
 Message
 
-Liste des commandes
-/help
+Pour se déconnecter
+/fin
 
 Pour envoyer un fichier qui sera enregistré sur le serveur
 file
@@ -21,7 +24,7 @@ file
 Consulter les fichiers disponibles côté Serveur
 /files
 
-Accéder aux clients connectés
+Accéder aux clients connectés et sur quel canal ils sont connectés
 /users
 
 Consulter les channels existants
@@ -36,4 +39,9 @@ join "NomDuChannel"
 Les informations sur les channels
 infoChannels
 
+Supprimer un channel
+/deleteChannel "NomDuChannel"
+
+Modification des informations des channels
+/modifChannel "NomDuChannel"
 ===================================================

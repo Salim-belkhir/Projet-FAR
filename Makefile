@@ -1,6 +1,6 @@
 adresseIp = $(shell hostname -I)
 server :  server.c
-	gcc -o server server.c liste.c -lpthread
+	gcc -o server server.c liste.c channel.c -lpthread
 hostname : 
 	hostname -I
 executeServer :
