@@ -14,8 +14,20 @@
 #include <time.h>
 #include "client.h"
 
+
+/* Definition des couleurs pour améliorer le visuel */
+#define BLANC     "\033[37;01m"
+#define MAUVE     "\033[35;01m"
+#define BLEU      "\033[34;01m"
+#define JAUNE     "\033[33;01m"
+#define VERT      "\033[32;01m"
+#define ROUGE     "\033[31;01m"
+#define GRIS      "\033[30;01m"
+#define BLEU_CIEL "\033[36;01m"
+#define END       "\033[00m"
+
+// la longueur maximale de message 
 #define longueurMessage 10000
-#define CHUNK_SIZE 512
 
 
 /******* Les variables globales ***********/ 
@@ -48,7 +60,7 @@ void Commandes()
 
 /**
  * @brief 
- * fonction pour pouvoir récupérer une chaîne de charactères
+ * fonction pour pouvoir séparer une chaîne de charactères en plusieurs parties
  * @param message Chaine de charactères de laquelle on doit extraire une partie
  * @return char** 
  */
@@ -97,15 +109,21 @@ void connection(int socketClient)
     char messageEnvoi[longueurMessage];  //où on stocke le message à envoyer
     int socket = (long)socketClient; 
     
-    
     int i = 0;
     while(status == 0)
     {   
         //Début de la connexion avec l'envoi du pseudo choisi
         memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
         if( i < 1)
-        {
-            strcpy(messageEnvoi, "tentative de connexion");
+        {   
+            do
+            {        
+                printf("▬▬ Voulez-vous vous connecter à votre compte ? (o/n) ▬▬\n");
+                printf("→ ");
+                fgets(messageEnvoi, longueurMessage*sizeof(char),stdin);
+                messageEnvoi[strlen(messageEnvoi) - 1]= 0;
+                //strcpy(messageEnvoi, "tentative de connexion");
+            }while(strcmp(messageEnvoi,"o") != 0  && strcmp(messageEnvoi,"n") != 0);
         } else {            
             fgets(messageEnvoi, longueurMessage*sizeof(char),stdin);
             messageEnvoi[strlen(messageEnvoi) - 1]= 0;
@@ -114,7 +132,7 @@ void connection(int socketClient)
         switch(ecrits)
         {
             case -1: 
-                perror("write");
+                perror("[-] la fonction Write a échoué");
                 close(socket);
                 exit(-3);
             case 0:
@@ -124,10 +142,31 @@ void connection(int socketClient)
             default:
                 if( i < 1)
                 {
-                    printf("Demande de connexion ...\n");
-                } else {            
-                    printf("Pseudo %s envoyé avec succés ☻ (%d octets)\n",messageEnvoi,ecrits);
+                    if(strcmp(messageEnvoi, "o") == 0){
+                        printf("Quels sont vos identifiants ?  'pseudo mdp' \n");
+                        printf("→ ");
+                    }
+                    else{
+                        printf("Quel pseudo et mot de passe choisissez-vous ?  'pseudo mdp' \n");
+                        printf("→ ");
+                    }
+                    fgets(messageEnvoi, longueurMessage*sizeof(char),stdin);
+                        messageEnvoi[strlen(messageEnvoi) - 1]= 0;
+                        switch(write(socket, messageEnvoi, longueurMessage * sizeof(char))){
+                            case -1 :
+                                perror("[-] Erreur dans l'envoi des identifiants");
+                                exit(-1);
+                            case 0 :
+                                perror("La socket a été fermée par le serveur");
+                                exit(-1);
+                        }
+                    
+                    printf("%s▬▬ Demande de connexion %s%s. . .\n", MAUVE,END,BLEU_CIEL);
                 }
+                else
+                {
+                    printf("%s○ Pseudo %s envoyé avec %ssuccés ☻ (%d octets) %s○\n",MAUVE,messageEnvoi,BLEU_CIEL,ecrits,MAUVE);
+                }                         
         }
 
         memset(messageRecu, 0x00, longueurMessage*sizeof(char));
@@ -137,11 +176,11 @@ void connection(int socketClient)
         switch(lus)
         {
             case -1: 
-                perror("read");
+                perror("[-] La fonction read a échoué");
                 close(socket);
                 exit(-4);
             case 0:
-                fprintf(stderr, "\n[-]La socket a été fermée par le serveur !\n");
+                fprintf(stderr, "\n\033[31;01m [-]La socket a été fermée par le serveur !\033[00m\n");
                 close(socket);
                 exit(-5);
             default:
@@ -150,18 +189,27 @@ void connection(int socketClient)
                     if(strcmp(messageRecu, "valide") == 0)
                     {
                         status = 1;
-                        printf("\nLe pseudo choisit est bien valide ☻ \n");
+                        printf("○ Le pseudo choisit est bien %svalide ☻ ○\n",BLEU_CIEL);
+                        printf("\n%s◘ CONNECTE ◘ \n",VERT);
+                        sleep(2);
+                        system("clear");
                         break;
                     }else if(strcmp(messageRecu, "invalide") == 0)
                     {
-                        printf("\nLe pseudo choisit exist déja !!\n");
-                        printf("Choisissez un autre pseudo\n");
-                        printf("→ ");   
+                        printf("%s○ Le pseudo choisit %sexist déja !! %s○\n",MAUVE,JAUNE,MAUVE);
+                        printf("▬▬ Choisissez un autre pseudo %s▬▬\n", BLEU_CIEL);
+                        printf("→%s ",BLANC);   
+                    }
+                    else if(strcmp(messageRecu, "Mot de passe invalide") == 0){
+                        printf("\n[!] Le mot de passe est erroné\n");
+                    }
+                    else if(strcmp(messageRecu, "Votre identifiant est erroné") == 0){
+                        printf("\n[!] Votre identifiant n'existe pas\n");
                     }
                     else {
                         i++;
-                        puts(messageRecu);
-                        printf("→ ");
+                        printf("▬▬ %s%s ▬▬ \n",MAUVE,messageRecu);
+                        printf("%s→ %s", BLEU_CIEL, BLANC);
                     }
                 } 
         }
@@ -184,12 +232,12 @@ int listeFichierDansDos(char * dossier, char ** fichiers)
     DIR * d = opendir(dossier); 
     if (d)
     {
-        printf("\n Listes des fichiers possibles d'envoyer \n");
+        printf("%s▬▬Listes des fichiers possibles d'envoyer ▬▬\n",MAUVE);
         while ((dir = readdir(d)) != NULL)
         {
             fichiers[nbFichiers] = malloc(256*sizeof(char)); 
             fichiers[nbFichiers] = dir->d_name;
-            printf("-> %s\n",dir->d_name);
+            printf("%s->%s %s\n",BLEU_CIEL,BLANC,dir->d_name);
             nbFichiers++;
         }
         closedir(d);
@@ -213,18 +261,23 @@ int tailleFile(char * filename){
     return taille;
 }
 
-
+/**
+ * @brief Creation d'une nouvelle Socket 
+ * 
+ * @return int revoie la socket créer
+ */
 
 int createNewSocket()
 {
-     // On va créer une nouvelle connexion avec le serveur sur un nouveau port pour 
+    // On va créer une nouvelle connexion avec le serveur sur un nouveau port pour 
     // l'envoi du fichier sans interferer avec l'envoi et la réception de messages 
+    // OU pour d'autre utilité comme les channels
+
     long socketClient;
     struct sockaddr_in pointDeRencontreDistant;
     socklen_t longueurAdresse;
 
     socketClient = socket(PF_INET, SOCK_STREAM, 0);
-
     /* 0 indique que l’on utilisera leprotocole par défaut 
     associé à SOCK_STREAM soit TCP
     */
@@ -232,10 +285,11 @@ int createNewSocket()
     // Teste la valeur renvoyée par l’appel système socket() afin de vérifier la bonne création de celle-ci
     if(socketClient < 0)
     {
-        perror("socket echoué");
+        printf("%s",ROUGE);
+        perror("[-] Creation socket echoué");
+        printf("%s\n",END);
         exit(-1); // On sort en indiquant un code erreur
     }
-    
     
     longueurAdresse = sizeof(pointDeRencontreDistant);
     // Initialise à 0 la struct sockaddr_in
@@ -276,13 +330,15 @@ void  * envoiFile(void * fileName){
     int writeName = write(socketClient, filename, 50*sizeof(char));
     switch(writeName){
         case -1 : 
+            printf("%s",ROUGE);
             perror("[-] Problème rencontré dans l'envoi du fichier au serveur\n");
+            printf("%s\n",END);
             exit(-1);
         case 0 :
             perror("[-] La socket a été fermée par le serveur");
             exit(-1);
         default :
-            printf("Le nom du fichier %s a été envoyé\n", filename);
+            printf("○ Le nom du fichier %s a été envoyé ○\n", filename);
     }
 
     char path[150] = "fichiersClient/";
@@ -297,22 +353,28 @@ void  * envoiFile(void * fileName){
          
     switch(writeTaille){
         case -1 :
+            printf("%s",ROUGE);
             perror("[-] Problème dans l'envoi de la taille du fichier\n");
+            printf("%s\n",END);
             exit(-1);
         case 0 :
+            printf("%s",ROUGE);
             perror("[-] La connexion a été fermée par le serveur\n");
+            printf("%s\n",END);
             exit(-1);
         default :
-            printf("Taille du fichier envoyée avec succés\n");
+            printf("○ Taille du fichier envoyée avec succés ○\n");
             puts("\n☼☼☼ Envoyer Un Message ☼☼☼");
     } 
     
 
     // 3) On ouvre le fichier pour en extraire le contenu et l'envoyer
-    FILE * fp = fopen(path,"r");
+    FILE * fp = fopen(path,"rb");
     
     if (fp == NULL) {
+        printf("%s",ROUGE);
         perror("[-]Le fichier n'a pas pu être lu ou est introuvable ! \n");
+        printf("%s\n",END);
         exit(1);
     }
 
@@ -324,13 +386,17 @@ void  * envoiFile(void * fileName){
     int writeData = write(socketClient, data, taille*sizeof(char));
     switch(writeData){
         case -1:
+            printf("%s",ROUGE);
             perror("[-]Erreur rencontrée dans l'envoi du contenu du fichier");
+            printf("%s\n",END);
             exit(-1);
         case 0:
-            perror("La socket a été fermée par le serveur");
+            printf("%s",ROUGE);
+            perror("[-]La socket a été fermée par le serveur");
+            printf("%s\n",END);
             exit(-1);
         default :
-            printf("Contenu du fichier bien envoyé");
+            printf("○ Contenu du fichier bien envoyé ○\n");
     }
     close(socketClient);  //fermeture de cette connexion
     pthread_exit(0);
@@ -352,16 +418,27 @@ void procFichier(int socket)
     char *dossier = malloc(longueurMessage*sizeof(char));
     int i , nombreFichiers, fichiersTrouver;
     
-    
-    if (write(socket, "file",strlen("file")) == -1) {
-    perror("[-]Error in sending file.");
-    exit(1);
+    int writeData = write(socket, "file",strlen("file"));
+    switch(writeData){
+        case -1:
+            printf("%s",ROUGE);
+            perror("[-]Erreur rencontrée dans l'envoi message file");
+            printf("%s\n",END);
+            exit(-1);
+        case 0:
+            printf("%s",ROUGE);
+            perror("[-] La socket a été fermée par le serveur");
+            printf("%s\n",END);
+            exit(-1);
+        default :
+            printf("○ le message file a été bien envoyer ○\n");
     }
+    
     strcpy(dossier, "fichiersClient/");   
     nombreFichiers = listeFichierDansDos(dossier, fichiers);
     fichiersTrouver = 0;
     while(fichiersTrouver == 0){
-        puts("\n☼☼☼ Choisissez un fichier ☼☼☼");
+        puts("☼☼☼ Choisissez un fichier ☼☼☼");
         printf("→ ");
         fgets(nomFichier, longueurMessage*sizeof(char),stdin);
         nomFichier[strlen(nomFichier) - 1]=0;
@@ -369,17 +446,17 @@ void procFichier(int socket)
         {     
             if(strcmp(nomFichier,fichiers[i]) == 0)
             {
-                printf("Le fichier existe bien !\n");
+                printf("○ Le fichier existe bien ! ○\n");
                 fichiersTrouver = 1;
-                printf("le fichier a été lu correctement \n");
+                printf("○ le fichier a été lu correctement ○\n");
                 strcpy(fichierChoisit, nomFichier);
                 pthread_create(&tFiles, NULL, envoiFile,(void *) fichierChoisit);
-                printf("[+]Fichier a été bien envoyer.\n");
+                printf("○ [+]Fichier a été bien envoyer ○\n");
             }
         }
         if(fichiersTrouver == 0)
         {
-            printf("! Ce fichier n'existe pas !\n");
+            printf("○ Ce fichier n'existe pas ○\n");
         }
     }
 }
@@ -394,38 +471,44 @@ void receptionFichier(int socketClient2){
     char * name = malloc(50*sizeof(char));
     int readName = read(socketClient2, name, 50*sizeof(char));
     if(readName == -1){
+        printf("%s",ROUGE);
         perror("[-] Erreur dans la reception du nom de fichier\n");
+        printf("%s\n",END);
         exit(-1);
     }
-    printf("Le nom du fichier a recevoir est : %s\n", name);
+    printf("○ Le nom du fichier a recevoir est : %s ○\n", name);
 
     //2) récupération de la taille du fichier qu'on va récupérer
     char * tailleChar = malloc(10*sizeof(char));
     
     int readTaille = read(socketClient2,tailleChar, 10*sizeof(char)); 
     if( readTaille == -1){
+        printf("%s",ROUGE);
         perror("[-] Une erreur est survenu, nous n'arrivons pas à recevoir la taille du fichier que vous voulez envoyer \n");
+        printf("%s\n",END);
         exit(-1);
     }
     
     int taille = atoi(tailleChar);
-    printf("La taille du message est : %d\n", taille);
+    printf("○ La taille du message est : %d ○\n", taille);
 
     //3) Récupération du contenu du fichier que l'on va créer
     char * data = malloc(taille*sizeof(char)); 
     int readData = read(socketClient2,data, taille * sizeof(char));
     if( readData == -1){
+        printf("%s",ROUGE);
         perror("[-] Une erreur est survenu, nous n'arrivons pas à recevoir le contenu du fichier\n");
+        printf("%s\n",END);
         exit(-1);
     }
     
-    printf("Voila le message recu = %s\n", data);
+    printf("○ Voila le message recu = %s ○\n", data);
 
     //4) Création du fichier dans le dossier souhaité
     char path[150] = "fichiersClient/";
     strcat(path, name);
 
-    FILE * f = fopen(path, "w");
+    FILE * f = fopen(path, "wb");
 
     if(f != NULL){
         fputs(data, f);
@@ -435,56 +518,70 @@ void receptionFichier(int socketClient2){
 
 
 /**
- * @brief fonction qui permet au client de modifier les informations d'un channel au client
- * 
- * @param socket 
+ * @brief fonction qui permet au client de modifier les informations d'un channel au client 
+ * La modification se fait sur une nouvelle socket pour permettre le client de continuer de recevoir des messages et ne pas 
+ * avoir de conflit
  */
 void modifierCanal(){
     int socket = createNewSocket();
 
     // (1) Modification du nom du canal
-    printf("Voici le nom du fichier. Voulez-vous le modifier ? (o/n)\n");
+    printf("▬▬ Voici le nom du fichier \n");
     char * data = malloc(1024 * sizeof(char));
     switch(read(socket,data, 1024 * sizeof(char))){
         case -1 :
-            printf("[-] Problème rencontré dans la réception d'informations de la part du serveur [-] \n\n");
+            printf("%s",ROUGE);
+            printf("[-] Problème rencontré dans la réception d'informations de la part du serveur \n");
+            printf("%s\n",END);
             close(socket);
             return;
         case 0 :
-            printf("La socket a été fermée par le client");
+            printf("%s",ROUGE);
+            printf("[-] La socket a été fermée par le client \n");
+            printf("%s\n",END);
             return;
-
     }
     if(strcmp(data, "erreur") == 0){
+        printf("%s",ROUGE);
         printf("[-] Ce channel n'existe pas");
+        printf("%s\n",END);
         return;
     }
-    printf("%s \n", data);
+    printf("%s\n", data);
+    printf("▬▬ Voulez-vous le modifier ? (o/n) ▬▬\n");
     memset(data, 0x00, 1024*sizeof(char));
     fgets(data, 1024*sizeof(char),stdin);
     data[strlen(data) - 1]=0;
     switch(write(socket, data, 1024* sizeof(char))){
         case -1 :
-            printf("[-] Problème dans l'envoi des informations au serveur [-] \n\n");
+            printf("%s",ROUGE);
+            printf("[-] Problème dans l'envoi des informations au serveur \n");
+            printf("%s\n",END);
             close(socket);
             return;
         case 0 :
+            printf("%s",ROUGE);
             printf("[-] La socket a été fermée par le serveur");
+            printf("%s\n",END);
             return;
     }
         // Volonté de modifier le nom
     if(strcmp(data, "o") == 0){
-        printf("Quel est le nouveau nom que vous voulez donner ?\n");
+        printf("▬▬ Quel est le nouveau nom que vous voulez donner ? ▬▬\n");
         memset(data, 0x00, 1024*sizeof(char));
         fgets(data, 1024*sizeof(char),stdin);
         data[strlen(data) - 1]=0;
         switch(write(socket,data, 1024 * sizeof(char))){
             case -1 :
+                printf("%s",ROUGE);
                 printf("[-] Problème dans l'envoi des informations au serveur [-] \n\n");
+                printf("%s\n",END);
                 close(socket);
                 return;
             case 0 :
-                printf("[-] La socket a été fermée par le serveur");
+                printf("%s",ROUGE);
+                printf("[-] La socket a été fermée par le serveur \n");
+                printf("%s\n",END);
                 return;
         }
     }
@@ -492,46 +589,59 @@ void modifierCanal(){
     memset(data, 0x00, 1024*sizeof(char));
 
     // (2) Modification de la description
-    printf("Voici la description du Canal actuelle ci-dessous. Voulez-vous modifier la description ? (o/n) \n");
+    printf(" ○ Voici la description du Canal actuelle ci-dessous ○\n");
     
-        //récupération de la description existante
+    //récupération de la description existante
     switch(read(socket, data, 1024 * sizeof(char))){
         case -1 :
+            printf("%s",ROUGE);
             printf("[-] Problème rencontré dans la réception d'informations de la part du serveur [-] \n\n");
+            printf("%s\n",END);
             close(socket);
             return;
         case 0 :
+            printf("%s",ROUGE);
             printf("La socket a été fermée par le client");
+            printf("%s\n",END);
             return;
     }
     printf("%s \n", data);
+    printf("▬▬  Voulez-vous modifier la description ? (o/n) ▬▬\n");
     memset(data, 0x00, 1024*sizeof(char));
-
-        // Récupération de la réponse du client et envoi au serveur
+    
+    // Récupération de la réponse du client et envoi au serveur
     fgets(data, 1024*sizeof(char),stdin);
     data[strlen(data) - 1]=0;
     switch(write(socket,data, 1024 * sizeof(char))){
         case -1 :
-            printf("[-] Problème dans l'envoi des informations au serveur [-] \n\n");
+            printf("%s",ROUGE);
+            printf("[-] Problème dans l'envoi des informations au serveur\n");
+            printf("%s\n",END);
             close(socket);
             return;
         case 0 :
-            printf("[-] La socket a été fermée par le serveur");
+            printf("%s",ROUGE);
+            printf("[-] La socket a été fermée par le serveur \n");
+            printf("%s\n",END);
             return;
     }
         //envoi de la nouvelle description
     if(strcmp(data, "o") == 0){
-        printf("Quelle est la nouvelle description que vous voulez ajouter ?\n");
+        printf("▬▬ Quelle est la nouvelle description que vous voulez ajouter ? ▬▬\n");
         memset(data, 0x00, 1024*sizeof(char));
         fgets(data, 1024*sizeof(char),stdin);
         data[strlen(data) - 1]=0;
         switch(write(socket,data, 1024 * sizeof(char))){
             case -1 :
-                printf("[-] Problème dans l'envoi des informations au serveur [-] \n\n");
+                printf("%s",ROUGE);
+                printf("[-] Problème dans l'envoi des informations au serveur \n");
+                printf("%s\n",END);
                 close(socket);
                 return;
             case 0 :
-                printf("[-] La socket a été fermée par le serveur");
+                printf("%s",ROUGE);
+                printf("[-] La socket a été fermée par le serveur \n");
+                printf("%s\n",END);
                 return;
         }
     }
@@ -540,56 +650,64 @@ void modifierCanal(){
     memset(data, 0x00, 1024*sizeof(char));
 
     // (3)  Modification de la capacité maximale
-    printf("Voulez vous modifier la capacité maximale du canal ? (o/n) \n La taille actuelle est de ");
     switch(read(socket,data, 1024 * sizeof(char))){
         case -1 :
-            printf("[-] Problème rencontré dans la réception d'informations de la part du serveur [-] \n\n");
+            printf("%s",ROUGE);
+            printf("[-] Problème rencontré dans la réception d'informations de la part du serveur \n");
+            printf("%s\n",END);
             close(socket);
             return;
         case 0 :
-            printf("La socket a été fermée par le client");
+            printf("%s",ROUGE);
+            printf("La socket a été fermée par le client \n");
+            printf("%s\n",END);
             return;
     }
      // récupération de la capacité actuelle
     strcat(data, " clients maximum \n");
-    printf("%s", data);
-
+    printf("○ La taille actuelle est de %s ○", data);
+    printf("▬▬ Voulez vous modifier la capacité maximale du canal ? (o/n) ▬▬\n");
     memset(data, 0x00, 1024*sizeof(char));
     fgets(data, 1024*sizeof(char),stdin);
     data[strlen(data) - 1]=0;
     switch(write(socket,data, 1024 * sizeof(char))){
         case -1 :
-            printf("[-] Problème dans l'envoi des informations au serveur [-] \n\n");
+            printf("%s",ROUGE);
+            printf("[-] Problème dans l'envoi des informations au serveur \n");
+            printf("%s\n",END);
             close(socket);
             return;
         case 0 :
-            printf("[-] La socket a été fermée par le serveur");
+            printf("%s",ROUGE);
+            printf("[-] La socket a été fermée par le serveur \n");
+            printf("%s\n",END);
             return;
     }
         // modification de la capacité maximale
     if(strcmp(data, "o") == 0){
-        printf("Quelle est la nouvelle capacité maximale ?\n");
+        printf("▬▬ Quelle est la nouvelle capacité maximale ? ▬▬\n");
         memset(data, 0x00, 1024*sizeof(char));
         fgets(data, 1024*sizeof(char),stdin);
         data[strlen(data) - 1]=0;
         switch(write(socket,data, 1024 * sizeof(char))){
             case -1 :
-            printf("[-] Problème dans l'envoi des informations au serveur [-] \n\n");
+            printf("%s",ROUGE);
+            printf("[-] Problème dans l'envoi des informations au serveur \n");
+            printf("%s\n",END);
             close(socket);
             return;
         case 0 :
-            printf("[-] La socket a été fermée par le serveur");
+            printf("%s",ROUGE);
+            printf("[-] La socket a été fermée par le serveur \n");
             return;
         }
     }
 
 }
 
-
 /**
- * @brief 
- * fonction qui permet le bon choix du fichier à envoyer et ensuite crée un thread qui s'occupe de l'envoi
- * @param socket socket du Client pour pouvoir envoyer "file" au serveur une fois qu'un fichier valide a été sélectionné
+ * @brief Recevoir (Téléchargé ) un fichier disponible sur le serveur 
+ * Un thread applique cette fonction qui permet le bon choix du fichier à recevoir et le recoie
  */
 void * procRecupFichier()
 {
@@ -601,40 +719,46 @@ void * procRecupFichier()
     while(fichiersTrouver == 0){
         
         if (read(socket,messageRecu, longueurMessage*sizeof(char)) == -1) {
-        perror("[-]Error in sending file.");
+        printf("%s",ROUGE);
+        perror("[-]Erreur à la lecture du message recu pour les fichiers. ");
+        printf("%s\n",END);
         exit(1);
         }
-
+        
         //lister les fichiers disponible dans le serveur
         printf("%s\n", messageRecu);
         puts("\n☼☼☼ Choisissez un fichier ☼☼☼");
         printf("→ ");
         fgets(nomFichier, 50*sizeof(char),stdin);
         nomFichier[strlen(nomFichier) - 1]=0;
-        printf("nom de fichier a envoyé %s\n", nomFichier);
+        printf("○ nom de fichier a envoyé %s ○\n", nomFichier);
         if (write(socket, nomFichier,50*sizeof(char)) == -1) {
-        perror("[-]Error in sending file.");
+        printf("%s",ROUGE);
+        perror("[-]Erreur à l'envoie du nom de fichier. ");
+        printf("%s\n",END);
         exit(1);
         }
 
         memset(messageRecu, 0x00, longueurMessage*sizeof(char));
         if (read(socket, messageRecu, longueurMessage*sizeof(char)) == -1) 
         {
-            perror("[-]Error in sending file.");
+            printf("%s",ROUGE);
+            perror("[-]Erreur à la lecture de réponse de fichier si valide ou pas.");
+            printf("%s\n",END);
             exit(1);
         }
 
         if(strcmp(messageRecu, "EnvoieValide") == 0)
         {
             // on recoie le fichier
-            printf("\033[30;01mLe fichier existe bien !\033[00m\n");
+            printf("\033[30;01m○ Le fichier existe bien !\033[00m ○\n");
             fichiersTrouver = 1;
             receptionFichier(socket);
             printf("\033[32;01m[+]Fichier a été bien reçu.\033[00m\n");
         } else 
         {
             // on redemande le nom de fichier
-            printf("\033[30;01mLe fichier n'existe pas essaier un autre nom !\033[00m\n");
+            printf("\033[30;01m○ Le fichier n'existe pas essaier un autre nom !\033[00m ○\n");
             fichiersTrouver = 0;
         }
     }
@@ -645,7 +769,7 @@ void * procRecupFichier()
 
 
 /**
- * @brief Create a Channel object
+ * @brief Creation d'un nouveau canal de communication
  * Fonction qui permet la création d'un channel en envoyant à la suite les différentes informations
  * @param socket 
  */
@@ -656,59 +780,75 @@ void createChannel(){
     char * reponse = malloc(100 * sizeof(char));
     switch(read(socket, reponse, 100*sizeof(char))){
         case -1:
-            perror("[-]Erreur rencontrée dans l'envoi du nom du channel");
+            printf("%s",ROUGE);
+            perror("[-] Erreur rencontrée dans l'envoi du nom du channel");
+            printf("%s\n",END);
             exit(-1);
         case 0:
-            perror("La socket a été fermée par le serveur");
+            printf("%s",ROUGE);
+            perror("[-] La socket a été fermée par le serveur");
+            printf("%s\n",END);
             exit(-1);
     }
 
     if(strcmp(reponse, "impossible") == 0){
         //on ne peut pas créer de channel
-        printf("[!]Il ne reste plus de place pour créer un nouveau channel sur le serveur\n");
+        printf("[!] Il ne reste plus de place pour créer un nouveau channel sur le serveur\n");
         return ;
     }
 
     // 1 ) On envoie le nom du channel
     char * name = malloc(100*sizeof(char));
-    printf("Quel est le nom que vous voulez donné au channel ? \n");
+    printf("▬▬ Quel est le nom que vous voulez donné au channel ? ▬▬\n");
     fgets(name, 100*sizeof(char), stdin);
     name[strlen(name) - 1]=0;
     switch(write(socket, name, 100*sizeof(char))){
         case -1:
-            perror("[-]Erreur rencontrée dans l'envoi du nom du channel");
+            printf("%s",ROUGE);
+            perror("[-] Erreur rencontrée dans l'envoi du nom du channel");
+            printf("%s\n",END);
             exit(-1);
         case 0:
-            perror("La socket a été fermée par le serveur");
+            printf("%s",ROUGE);
+            perror("[-] La socket a été fermée par le serveur");
+            printf("%s\n",END);
             exit(-1);
     }
 
     // 2) Description du channel
     char * description = malloc(1024 * sizeof(char));
-    printf("Quelle est sa description ?\n");
+    printf("▬▬ Quelle est sa description ? ▬▬\n");
     fgets(description,  1024 * sizeof(char), stdin);
     description[strlen(description) - 1]=0;
     switch(write(socket, description, 1024*sizeof(char))){
         case -1:
-            perror("[-]Erreur rencontrée dans l'envoi de la description du channel");
+            printf("%s",ROUGE);
+            perror("[-] Erreur rencontrée dans l'envoi de la description du channel");
+            printf("%s\n",END);
             exit(-1);
         case 0:
-            perror("La socket a été fermée par le serveur");
+            printf("%s",ROUGE);
+            perror("[-] La socket a été fermée par le serveur");
+            printf("%s\n",END);
             exit(-1);
     }
 
     // 3) Envoi de la taille maximum du channel
     char * tailleMax = malloc(5*sizeof(char));
-    printf("Quelle est sa taille maximum ?\n");
+    printf("▬▬ Quelle est sa taille maximum ? ▬▬\n");
     fgets(tailleMax, 5*sizeof(char),stdin);
-    printf("La taille max saisie est : %s\n", tailleMax);
+    printf("○ La taille max saisie est : %s ○\n", tailleMax);
     tailleMax[strlen(tailleMax) - 1]=0;
     switch(write(socket, tailleMax, 5*sizeof(char))){
         case -1:
-            perror("[-]Erreur rencontrée dans l'envoi de la taille du channel");
+            printf("%s",ROUGE);
+            perror("[-] Erreur rencontrée dans l'envoi de la taille du channel");
+            printf("%s\n",END);
             exit(-1);
         case 0:
-            perror("La socket a été fermée par le serveur");
+            printf("%s",ROUGE);
+            perror("[-] La socket a été fermée par le serveur");
+            printf("%s\n",END);
             exit(-1);
     }
 }
@@ -728,12 +868,13 @@ void * Envoyer(void * socketClient)
     pthread_t tFiles;
 
     // Envoie un message au serveur et gestion des erreurs
-    printf("► Envoyer /help pour voir la liste des commandes possible ◄\n► Envoyer file pour envoyer un fichier ◄\n");
+    printf("%s○ Envoyer %s/help%s %spour voir la liste des commandes possibles ○\n",MAUVE,BLEU_CIEL,END, MAUVE);
     while(1)
     {
         memset(messageEnvoi, 0x00, longueurMessage*sizeof(char));
+        printf("%s",BLEU_CIEL);
         puts("\n☼☼☼ Envoyer Un Message ☼☼☼");
-        printf("→ ");
+        printf("%s→%s ", BLEU_CIEL,BLANC);
         fgets(messageEnvoi, longueurMessage*sizeof(char),stdin);
         messageEnvoi[strlen(messageEnvoi) - 1]=0;
         if(strcmp(messageEnvoi, "file") == 0)
@@ -743,7 +884,9 @@ void * Envoyer(void * socketClient)
         {
             
             if (write(socket, "/FilesRecup",strlen("/FilesRecup")) == -1) {
+            printf("%s",ROUGE);
             perror("[-]Error in sending file.");
+            printf("%s\n",END);
             exit(1);
             }
             pthread_t tRecup;
@@ -757,17 +900,22 @@ void * Envoyer(void * socketClient)
             switch(ecrits)
             {
                 case -1: 
+                    printf("%s",ROUGE);
                     perror("[-] Erreur dans l'envoi");
+                    printf("%s\n",END);
                     close(socket);
                     exit(-3);
                 case 0:
-                    fprintf(stderr, "\n[-]La socket a été fermée par le serveur !\n");
+                    printf("%s",ROUGE);
+                    fprintf(stderr, "[-] La socket a été fermée par le serveur !\n");
+                    printf("%s\n",END);
                     close(socket);
                     exit(-5);
                 default:
                     //gestion du cas où le client veut se déconnecter avec le mot "quit"
                     if(strcmp(messageEnvoi, "/fin") == 0){
-                        printf("\n[!]---fin de la discussion---[!]\n\n");
+                        printf("%s◘ CONNECTE ◘ \n",JAUNE);
+                        printf("%s\n[!]---fin de la discussion---[!]\n", BLEU);
                         kill(getppid(), SIGTERM);
                         exit(0);
                     }
@@ -778,7 +926,7 @@ void * Envoyer(void * socketClient)
                         modifierCanal();
                     }
                     else{
-                         printf("Message %s envoyé avec succés ☻ (%d octets)\n",messageEnvoi,ecrits);
+                        printf("%s○ Message %s%s %senvoyé avec %ssuccés ☻ (%d octets) %s○\n",MAUVE,BLANC,messageEnvoi,MAUVE,BLEU_CIEL,ecrits,MAUVE);
                     }
             }
         }
@@ -805,19 +953,26 @@ void * Recevoir(void * socketClient)
         switch(lus)
         {
             case -1: 
-                perror("read");
+                printf("%s",ROUGE);
+                perror("[-] Erreur à la reception du message ");
+                printf("%s\n",END);
                 close(socket);
                 exit(-4);
             case 0:
-                fprintf(stderr, "\n[-]La socket a été fermée par le serveur !\n");
+                printf("%s",ROUGE);
+                printf("\n[-] La socket a été fermée par le serveur !\n");
+                printf("%s\n",END);
                 close(socket);
                 exit(-5);
             default:
                 if(strcmp(messageRecu, "/ban") == 0){
-                    printf("\n[!]---fin de la discussion---[!]\n\n");
+                    printf("%s◘ CONNECTE ◘ \n",JAUNE);
+                    printf("%s[!]---fin de la discussion---[!]\n\n", BLEU);
                     if(write(socket, "/fin", 4*sizeof(char)) == -1)
-                    {                        
-                        perror("read");
+                    {         
+                        printf("%s",ROUGE);               
+                        perror("[-] Erreur à l'envoie du message /fin");
+                        printf("%s\n",END);
                      }
                     kill(getppid(), SIGTERM);
                     exit(0);
@@ -825,8 +980,9 @@ void * Recevoir(void * socketClient)
                 printf("\n");
                 puts(messageRecu);
                 // On a fini d'afficher le message recu on affiche la demande d'envoie
+                printf("%s",BLEU_CIEL);
                 puts("\n☼☼☼ Envoyer Un Message ☼☼☼");
-                puts("→ ");               
+                printf("%s",BLANC);               
         }
     }
     pthread_exit(0);   
@@ -837,6 +993,7 @@ void * Recevoir(void * socketClient)
 
 int main(int argc, char *argv[]) 
 {
+    printf("%s \n", BLANC);
     long socketClient;
     struct sockaddr_in pointDeRencontreDistant;
     socklen_t longueurAdresse;
@@ -862,7 +1019,7 @@ int main(int argc, char *argv[])
         perror("socket echoué");
         exit(-1); // On sort en indiquant un code erreur
     }
-    printf("la Socket a été bien créé ! (%ld)\n", socketClient);
+    printf("○ la Socket a été %sbien créé ! (%ld) %s○\n",BLEU_CIEL,socketClient,BLANC);
     
     
     longueurAdresse = sizeof(pointDeRencontreDistant);
@@ -889,15 +1046,17 @@ int main(int argc, char *argv[])
         close(socketClient); // on ferme la ressourece pour quitter
         exit(-2);
     }
-    printf("Connection reussi avec the server \n");
+    printf("○ Connection de la socket avec the server %sréussi %s○\n\n",BLEU_CIEL,BLANC);
 
-    printf("status %d\n", status);
+    printf("%s◘ CONNECTE ◘ \n",JAUNE);
     connection(socketClient);    
 
     pthread_create(&tRecepteur, NULL, Recevoir, (void *) socketClient);
     pthread_create(&tEcouter, NULL, Envoyer, (void *) socketClient);
     pthread_join(tEcouter, NULL);    
     pthread_join(tRecepteur, NULL);
+
+    printf("%s\n", END);
     // On a fini on coupe la ressource pour quitter
     close(socketClient);
     return 0;

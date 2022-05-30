@@ -17,8 +17,6 @@
 #include <time.h>
 
 
-
-
 #define longueurMessage 10000
 #define sizeofArraySalons 10
 
@@ -104,7 +102,6 @@ char ** Separation(char * message){
     }
     return msg;
 }
-
 
 /**
  * @brief 
@@ -519,7 +516,6 @@ int * createNewSocket()
  * thread qui s'occupe de la réception d'un fichier envoyé par un client
  */
 void * receptionFichier(){
-    
     int * tabSockets = malloc(2*sizeof(int));
     tabSockets = createNewSocket();
         
@@ -561,7 +557,7 @@ void * receptionFichier(){
     char path[150] = "fichiersServeur/";
     strcat(path, name);
 
-    FILE * f = fopen(path, "w");
+    FILE * f = fopen(path, "wb");
 
     if(f != NULL){
         fputs(data, f);
@@ -1101,7 +1097,7 @@ void  envoiFile(char * filename, int socketClient){
     
 
     // 3) On ouvre le fichier pour en extraire le contenu et l'envoyer
-    FILE * fp = fopen(path,"r");
+    FILE * fp = fopen(path,"rb");
     
     if (fp == NULL) {
         perror("[-]Le fichier n'a pas pu être lu ou est introuvable ! \n");
@@ -1250,6 +1246,89 @@ void banClient(int socketClient, char * pseudoClient)
 }
 
 
+char ** lectureIdentifiants(){
+    FILE *file;
+    file = fopen("identification/id.txt", "r");
+    if( file == NULL ){
+        printf("On ne peut pas accéder à la liste des identifiants \n");
+        return NULL;
+    }
+    char ** data = malloc(1200 * sizeof(char *));
+    for(int j = 0; j<20; j++){
+        data[j] = malloc(1024*sizeof(char));
+    }
+    int i = 0;
+    char c;
+    while ( (c = getc(file)) != EOF){
+        if( c == '\n'){
+            i++;
+        }
+        else{
+            strncat(data[i], &c, sizeof(char));
+        }
+    }
+    fclose(file);
+    return data;
+}
+
+
+/**
+ * @brief 
+ * 
+ * @param pseudo 
+ * @return int 
+ */
+int clientInscrit(char * pseudo){
+    char ** listeConnexion = lectureIdentifiants();
+    //printf("Le premier element des identifiant : %s\n", listeConnexion[0]);
+    int nonTrouve = 1;
+    int i = 0;
+    while (listeConnexion[i] != NULL && nonTrouve){
+        char ** separation = Separation(listeConnexion[i]);
+        if(strcmp(separation[0], pseudo) == 0){
+            printf("Pseudo trouvé, c'est : %s \n", separation[0]);
+            nonTrouve = 0;
+        }
+        i++;
+    }
+    if(nonTrouve){
+        return -1;
+    }
+    else{
+        return 1;
+    }
+}
+
+
+/**
+ * @brief Verifie que le mot de passe et le pseudo passées en paramètres sont bien justes
+ * 
+ * @param pseudo 
+ * @param mdp 
+ * @return 1 si les identifiants sont conformes, sinon -1 
+ */
+int verificationIdentifiants( char * pseudo, char * mdp){
+    char ** listeId = lectureIdentifiants();
+    int i = 0;
+    int nonVerifie = 1;
+    while(listeId[i] != NULL && nonVerifie){
+        char ** separation = Separation(listeId[i]);
+        if(strcmp(separation[0], pseudo) == 0){
+            if(strcmp(separation[1], mdp) == 0){
+                nonVerifie = 0;
+            }
+        }
+        i++;
+    }
+    if(nonVerifie){
+        return -1;
+    }
+    else{
+        return 1;
+    }
+}
+
+
 /**
  * @brief 
  * thread qui va s'occuper en problème du traitement reçu de la part du client pour l'acheminer vers la bonne fonction, 
@@ -1283,44 +1362,115 @@ void * Relayer(void * SocketClient)
                 fprintf(stderr, "[!]La socket a été fermé par le client !\n\n");
                 closeAllsockets(utilisateursConnectes);
             default:
-                if(i < 1)
-                {        
-                    // Connexion du client avec l'entrée d'un pseudo valide             
-                    printf("▬▬▬ %s ▬▬▬\n",messageRecu);
-                    if(strcmp(messageRecu, "tentative de connexion") != 0)
-                    {
-                        printf("Pseudo recu du client : %s (%d octets)\n\n",messageRecu,lus);
-                        if (existPseudo(messageRecu) == 0)
-                        {
-                            strcpy(messageEnvoi,"valide");
-                            reponseClient(socketClient, messageEnvoi);                            
-                            printf("le pseudo choisit est valide!\n");
-                            printf("on ajoute : %d a la file\n", socketClient);
-                            char * pseudo = malloc(longueurMessage* sizeof(char));
-                            strcpy(pseudo, messageRecu);
-                            char * canal = malloc(100* sizeof(char));
-                            strcpy(canal, getName(salons[0]));
-                            printf("on ajoute le pseudo : %s au canal %s\n",pseudo, canal);
-                            ajouter_debut(utilisateursConnectes,socketClient, pseudo, canal, 1);
-                            printf("taille apres l'ajout : %d \n",liste_taille(utilisateursConnectes));
-                            afficherListe(utilisateursConnectes);  
-                            //une fois qu'on a réussi à connecter le client, on lance le thread qui va relayer les messages
-                            nombreClientsConnectes = liste_taille(utilisateursConnectes);              
-                            // chaque client à son propre identifiant 
-                            ajouter_client(salons[0], socketClient);
-                            printf("Le nombre de clients connectés a l'accueil est %d \n",salons[0]->count);
-                            afficheClients(salons[0]);
-                            i++;
-                        } else 
-                        {
-                            strcpy(messageEnvoi,"invalide");
-                            reponseClient(socketClient, messageEnvoi);        
-                            printf("le pseudo choisit existe déja donc il faut choisir un autre!\n");
+                   if(i < 1)
+                {     
+                    if(strcmp(messageRecu, "o") == 0){
+                        switch(read(socketClient,messageRecu,longueurMessage*sizeof(char))){
+                            case -1 :
+                                perror("erreur dans la reception des identifiants");
+                                exit(-1);
+                            case 0 :
+                                perror("Socket fermée par le client");
+                                exit(-1);
                         }
-                    } else {
+                        char ** separation = Separation(messageRecu);
+                        char * pseudo = separation[0];
+                        char * mdp = separation[1];
+                        if(clientInscrit(pseudo) == 1){
+                            printf("J'ai passé la vérification du nom\n");
+                            if(verificationIdentifiants(pseudo, mdp) == 1){
+                                printf("J'ai tout validé\n");
+                                strcpy(messageEnvoi,"valide");
+                                reponseClient(socketClient, messageEnvoi);                            
+                                printf("le pseudo choisit est valide!\n");
+                                printf("on ajoute : %d a la file\n", socketClient);
+                                char * pseudo = malloc(longueurMessage* sizeof(char));
+                                strcpy(pseudo, messageRecu);
+                                char * canal = malloc(100* sizeof(char));
+                                strcpy(canal, getName(salons[0]));
+                                printf("on ajoute le pseudo : %s au canal %s\n",pseudo, canal);
+                                ajouter_debut(utilisateursConnectes,socketClient, pseudo, canal,1);
+                                printf("taille apres l'ajout : %d \n",liste_taille(utilisateursConnectes));
+                                afficherListe(utilisateursConnectes);  
+                                //une fois qu'on a réussi à connecter le client, on lance le thread qui va relayer les messages
+                                nombreClientsConnectes = liste_taille(utilisateursConnectes);              
+                                // chaque client à son propre identifiant 
+                                ajouter_client(salons[0], socketClient);
+                                printf("Le nombre de clients connectés a l'accueil est %d \n",salons[0]->count);
+                                afficheClients(salons[0]);
+                                i++;
+                            }
+                            else{
+                                reponseClient(socketClient, "Mot de passe invalide");
+                            }
+                        }
+                        else{
+                            reponseClient(socketClient, "Votre identifiant est erroné");
+                        }
+                    }
+                    else{
+                        switch(read(socketClient,messageRecu,longueurMessage*sizeof(char))){
+                            case -1 :
+                                perror("erreur dans la reception des identifiants");
+                                exit(-1);
+                            case 0 :
+                                perror("Socket fermée par le client");
+                                exit(-1);
+                        }
+                        //Le client ne souhaite pas se connecter
+                        // Connexion du client avec l'entrée d'un pseudo valide
+                        char ** separation = Separation(messageRecu);             
+                        printf("▬▬▬ %s ▬▬▬\n",separation[0]);
+                        //if(strcmp(messageRecu, "tentative de connexion") != 0)
+                        //{
+                            printf("Pseudo recu du client : %s (%d octets)\n\n",separation[0],lus);
+                            if (existPseudo(separation[0]) == 0 && clientInscrit(separation[0]) == -1)
+                            {   
+                                strcpy(messageEnvoi,"valide");
+                                reponseClient(socketClient, messageEnvoi);                            
+                                printf("le pseudo choisit est valide!\n");
+                                printf("on ajoute : %d a la file\n", socketClient);
+                                char * pseudo = malloc(longueurMessage* sizeof(char));
+                                strcpy(pseudo, separation[0]);
+                                char * canal = malloc(100* sizeof(char));
+                                strcpy(canal, getName(salons[0]));
+                                printf("on ajoute le pseudo : %s au canal %s\n",pseudo, canal);
+                                ajouter_debut(utilisateursConnectes,socketClient, pseudo, canal,1);
+                                printf("taille apres l'ajout : %d \n",liste_taille(utilisateursConnectes));
+                                afficherListe(utilisateursConnectes);  
+                                //une fois qu'on a réussi à connecter le client, on lance le thread qui va relayer les messages
+                                nombreClientsConnectes = liste_taille(utilisateursConnectes);              
+                                // chaque client à son propre identifiant 
+                                ajouter_client(salons[0], socketClient);
+                                printf("Le nombre de clients connectés a l'accueil est %d \n",salons[0]->count);
+                                afficheClients(salons[0]);
+                                //Enregistrement du client dans le fichier des identifiants 
+
+                                FILE * f;
+                                f = fopen("identification/id.txt", "a+");
+                            
+                                if(f==NULL){
+                                    printf("Erreur lors de l'ouverture du fichier des identifiants");
+                                    exit(1);
+                                }
+                                fputs("\n", f);
+                                fputs(separation[0], f);
+                                fputs(" ", f);
+                                fputs(separation[1], f);
+                                fclose(f);
+                                i++;
+                            } else 
+                            {
+                                strcpy(messageEnvoi,"invalide");
+                                reponseClient(socketClient, messageEnvoi);        
+                                printf("le pseudo choisit existe déja donc il faut choisir un autre!\n");
+                            }
+                        //}   
+                    
+                    } /*else {
                         strcpy(messageEnvoi,"Choisissez un pseudo");
                         reponseClient(socketClient, messageEnvoi);  
-                    }
+                    }*/
             }else {
                 if (i <= 1)
                 {

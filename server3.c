@@ -7,7 +7,7 @@
 #include <arpa/inet.h> /* pour htons et inet_aton */
 #include <pthread.h>
 #include <unistd.h>
-#include "liste.h"
+#include "liste2.h"
 #include <signal.h>
 #include <dirent.h>
 #include "channel.h"
