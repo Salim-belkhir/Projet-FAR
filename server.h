@@ -138,3 +138,16 @@ void * Relayer(void * SocketClient);
  * @return Un entier qui est la taille du fichier
  */
 int tailleFile(char * filename);
+
+
+/**
+ * @brief Envoyer un message a tous les clients sur tout les canaux
+ * 
+ * @param socketClient 
+ * @param Message 
+ * @param suite 
+ */
+void EnvoyerAll(int socketClient, char * Message, char * suite);
+
+
+void ensAllClient(int socket);

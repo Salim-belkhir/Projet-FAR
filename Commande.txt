@@ -1,47 +1,57 @@
-===================================================
+▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
 Toutes Les commandes Possibles Pour Les Messages
+▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+|   Liste des commandes
+|___ /help
 
-Liste des commandes
-/help
+|    Envoyer un message A Tout les clients peut 
+|    importe leur canal 
+|___ @all Message
 
-@ User Message
+|    Message Privé
+|___ /mp User Message
 
-Message Privé
-/mp User Message
+|    Message urgent
+|___ ! User Message
 
-Message urgent
-! User Message
+|    Tous le monde
+|___ Message
 
-Tous le monde
-Message
+|    Pour se déconnecter
+|___ /fin
 
-Pour se déconnecter
-/fin
+|    déconnecter tous les clients Permit que 
+|    l'Admin
+|___ @end 
 
-Pour envoyer un fichier qui sera enregistré sur le serveur
-file
+|    Pour envoyer un fichier qui sera enregistré 
+|    sur le serveur
+|___ /file
 
-Consulter les fichiers disponibles côté Serveur
-/files
+|    Consulter les fichiers disponibles 
+|    côté Serveur
+|___ /files
 
-Accéder aux clients connectés et sur quel canal ils sont connectés
-/users
+|    Accéder aux clients connectés et sur quel 
+|    canal ils sont connectés
+|___ /users
 
-Consulter les channels existants
-/channels
+|    Consulter les channels existants
+|___ /channels
 
-Créer un channel
-createChannel
+|    Créer un channel
+|___ /createChannel
 
-Rejoindre un channel
-join "NomDuChannel"
+|    Rejoindre un channel
+|___ /join "NomDuChannel"
 
-Les informations sur les channels
-infoChannels
+|    Les informations sur les channels
+|___ /infoChannels
 
-Supprimer un channel
-/deleteChannel "NomDuChannel"
+|    Supprimer un channel
+|___ /deleteChannel "NomDuChannel"
 
-Modification des informations des channels
-/modifChannel "NomDuChannel"
-===================================================
+|    Modification des informations des channels
+|___ /modifChannel "NomDuChannel"
+▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬

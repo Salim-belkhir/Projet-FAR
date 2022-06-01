@@ -12,9 +12,8 @@
  * @return Channel* 
  */
 Channel * cree_Channel(char * name, char* descr,int capacity){
-    if(capacity <= 0){
-        perror("Cette valeur n'est pas valide, la capacité doit être supérieure à 0\n");
-        exit(-1);
+    if(capacity < 0){
+        printf("Cette valeur n'est pas valide, la capacité doit être supérieure à 0\n");
     }
     Channel* channel = malloc(sizeof(Channel*));
     channel->nom = malloc(100*sizeof(char));
