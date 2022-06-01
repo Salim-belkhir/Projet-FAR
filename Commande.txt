@@ -4,7 +4,7 @@ Toutes Les commandes Possibles Pour Les Messages
 |   Liste des commandes
 |___ /help
 
-|    Envoyer un message A Tout les clients peut 
+|    Envoyer un message A Tous les clients peu 
 |    importe leur canal 
 |___ @all Message
 
@@ -14,15 +14,11 @@ Toutes Les commandes Possibles Pour Les Messages
 |    Message urgent
 |___ ! User Message
 
-|    Tous le monde
+|    Tout le monde dans le meme canal
 |___ Message
 
 |    Pour se déconnecter
 |___ /fin
-
-|    déconnecter tous les clients Permit que 
-|    l'Admin
-|___ @end 
 
 |    Pour envoyer un fichier qui sera enregistré 
 |    sur le serveur
@@ -53,5 +49,18 @@ Toutes Les commandes Possibles Pour Les Messages
 
 |    Modification des informations des channels
 |___ /modifChannel "NomDuChannel"
+
+|    
+|__________ "ADMIN"_____________________
+
+|    déconnecter tous les clients
+|___ @end 
+
+|    Pour ban un utilisateur
+|___ /ban pseudoUser
+
+|    déplace un utilisateur vers 
+|    un nouveau channel
+|___ @deplace pseudoUser NomDuChannel
 ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
 ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬

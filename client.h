@@ -37,6 +37,15 @@ int createNewSocket();
 
 /**
  * @brief 
+ * fonction pour pouvoir séparer une chaîne de charactères en plusieurs parties
+ * @param message Chaine de charactères de laquelle on doit extraire une partie
+ * @return char** 
+ */
+char ** Separation(char * message);
+
+
+/**
+ * @brief 
  * Thread qui s'occupe de l'envoi d'un fichier vers le serveur 
  * @param fileName Nom du fichier à envoyer 
  */
@@ -48,6 +57,14 @@ void  * envoiFile(void * fileName);
  * @param socket socket du Client pour pouvoir envoyer "file" au serveur une fois qu'un fichier valide a été sélectionné
  */
 void procFichier(int socket);
+
+
+/**
+ * @brief Recevoir (Téléchargé ) un fichier disponible sur le serveur 
+ * Un thread applique cette fonction qui permet le bon choix du fichier à recevoir et le recoie
+ */
+void * procRecupFichier();
+
 
 /**
  * @brief Create a Channel object
@@ -75,3 +92,10 @@ void * Recevoir(void * socketClient);
  * thread qui s'occupe de la réception d'un fichier envoyé par un client
  */
 void receptionFichier(int socketClient2);
+
+/**
+ * @brief fonction qui permet au client de modifier les informations d'un channel au client 
+ * La modification se fait sur une nouvelle socket pour permettre le client de continuer de recevoir des messages et ne pas 
+ * avoir de conflit
+ */
+void modifierCanal();

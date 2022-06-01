@@ -317,6 +317,14 @@ void EnvoyerMessage(int socketClient, char * Message)
     }
 }
 
+
+/**
+ * @brief fonction qui permet l'envoi d'un message à tous les clients connectés peu importe leur Canal 
+ * 
+ * @param socketClient socket du client qui veut envoyer le message
+ * @param Message Le message à envoyer
+ * @param suite 
+ */
 void EnvoyerAll(int socketClient, char * Message, char * suite)
 {
     //On récupére le channel auquel le client est attaché
@@ -449,7 +457,6 @@ void infosChannels(int socket){
     if(i==0){
         strcat(data, "Malheuresement il n'y a pas de channels existants\n");
     }
-
     switch(write(socket, data, 2048*sizeof(char))){
         case -1:
             perror("[-]Erreur rencontrée dans l'envoi des infos du channel");
@@ -491,7 +498,7 @@ void listeChannels(int socket){
 }
 
 /**
- * @brief 
+ * @brief fonction qui crée une nouvelle socket pour de nouvelles connexions en parallèle
  * 
  */
 int * createNewSocket()
@@ -730,7 +737,7 @@ void suppressionCanal(char * name, int socket){
     int nonExist = 1;
     int fin = 1;
     if(strcmp(name, getName(salons[0])) == 0){
-        strcat(data, "\n [!] Ce n'est pas possible de supprimer l'accueil [!]\n");
+        strcat(data, "\n [!] Ce n'est pas possible de supprimer l'accueil [!]\n");
         fin = 0;
     }
     while(i < nombreSalons && nonExist && fin){
@@ -778,7 +785,7 @@ void suppressionCanal(char * name, int socket){
 /**
  * @brief thread qui permet de modifier les informations d'un channel
  * 
- * @param salon 
+ * @param salon nom du channel qu'il va falloir modifier
  * @return void* 
  */
 void * modifierCanalServer( void * salon){
@@ -1059,8 +1066,7 @@ void listesFichierDansDos(char * dossier, int socket)
     // opendir() renvoie un pointeur de type DIR. 
     DIR * d = opendir(dossier); 
     if(d)
-    {
-        
+    {     
         strcat(data,"\n\033[35;01m▬▬Liste des fichiers disponibles côté serveur ▬▬\n");
         while ((dir = readdir(d)) != NULL)
         {
@@ -1086,7 +1092,7 @@ void listesFichierDansDos(char * dossier, int socket)
 /**
  * @brief 
  * Renvoie la liste des différents clients connectées
- * @param socket 
+ * @param socket socket du client qui demande la liste des utilisateurs
  */
 void listeUsers(int socket){
     char data[1024];
@@ -1208,8 +1214,7 @@ void  envoiFile(char * filename, int socketClient){
 
 /**
  * @brief   
- * Lister les fichiers disponible dans un dossier
- * et retourner le nombre
+ * Lister les fichiers disponible dans un dossier et retourner le nombre
  * @param dossier dossier qui contient les fichiers côté client
  * @return int Nombre de fichiers disponible
  */
@@ -1311,7 +1316,6 @@ void  * procEnvFichier()
 void banClient(int socketClient, char * pseudoClient)
 {
     int i, idClient = idParPseudo(pseudoClient);
-    printf("idclient to ban: %d\n", idClient);
     Element * actuel = utilisateursConnectes -> premier;
     while(actuel -> suivant != NULL)
     {
@@ -1319,7 +1323,6 @@ void banClient(int socketClient, char * pseudoClient)
         {
             if(actuel -> admin == 1)
             {
-                printf("on est la \n");
                 EnvoyerMessageSpe(actuel -> id, "vous allez etre banner de cette messagerie", pseudoClient, "/ban");
                 reponseClient(idClient, "/ban");
             }
@@ -1329,8 +1332,8 @@ void banClient(int socketClient, char * pseudoClient)
 }
 
 /**
- * @brief Construct a new end All Client object
- * 
+ * @brief Fonction qui s'occupe de déconnecter tous les clients connectés et ferme le serveur
+ * Seul l'admin peut s'en servir
  */
 void endAllClient(int socketClient){
     Element * actuel = utilisateursConnectes -> premier;
@@ -1383,7 +1386,7 @@ void changerCanalClient(int socket, char * client, char * canal){
         }
         else{
             if(existPseudo(client) == 1)
-            {        
+            {        //on vérifie que le client existe bien (bien connecté)
                 int id = idParPseudo(client);
                 changementCanal(id, canal);
                 strcat(message, ROUGE);
@@ -1393,18 +1396,21 @@ void changerCanalClient(int socket, char * client, char * canal){
                 strcat(message, "Vous vous trouvez maintenant au canal :");
                 strcat(message,END);
                 strcat(message, getCanalClient(utilisateursConnectes, id));
-                reponseClient(id, message);
+                printf("Identifiant du client a deplacer : %d", id);
             } else {
                 reponseClient(socket, "\033[31;01m LE CLIENT QUE VOUS SOUHAITEZ DEPLACER N'EST PAS CONNECTE !\n");
             }
         }
     }
+    else{
+        reponseClient(socket, "\033[31;01m [!] Vous n'avez pas les droits pour faire ceci ! \n");
+    }
 }
 
 /**
- * @brief 
+ * @brief Cette fonction retourne un tableau de chaines de caractères ou chaque chaine contient les identifiants d'un client (pseudo, mdp)
  * 
- * @return char** 
+ * @return char** tableau de chaines de caractères
  */
 char ** lectureIdentifiants(){
     FILE *file;
@@ -1433,10 +1439,10 @@ char ** lectureIdentifiants(){
 
 
 /**
- * @brief 
+ * @brief Fonction qui vérifie si un client est bien inscrit, cad qu'il est ecrit dans le fichier id.txt
  * 
  * @param pseudo 
- * @return int 
+ * @return int 1 si le client est inscrit, sinon -1
  */
 int clientInscrit(char * pseudo){
     char ** listeConnexion = lectureIdentifiants();
@@ -1537,15 +1543,13 @@ void * Relayer(void * SocketClient)
                         char * pseudo = separation[0];
                         char * mdp = separation[1];
                         if(clientInscrit(pseudo) == 1){
-                            printf("J'ai passé la vérification du nom\n");
                             if(verificationIdentifiants(pseudo, mdp) == 1){
                                 // Il reste que à vérifier si le client n'est pas déja connecté à une autre session
                                 if(existPseudo(pseudo) == 0)
                                 {
-                                    printf("J'ai tout validé\n");
                                     strcpy(messageEnvoi,"valide");
                                     reponseClient(socketClient, messageEnvoi);                            
-                                    printf("le pseudo choisit est valide!\n");
+                                    printf("le pseudo choisi est valide!\n");
                                     printf("on ajoute : %d a la file\n", socketClient);
                                     char * pseudo = malloc(longueurMessage* sizeof(char));
                                     strcpy(pseudo, messageRecu);
@@ -1599,7 +1603,7 @@ void * Relayer(void * SocketClient)
                             {   
                                 strcpy(messageEnvoi,"valide");
                                 reponseClient(socketClient, messageEnvoi);                            
-                                printf("le pseudo choisit est valide!\n");
+                                printf("le pseudo choisi est valide!\n");
                                 printf("on ajoute : %d a la file\n", socketClient);
                                 char * pseudo = malloc(longueurMessage* sizeof(char));
                                 strcpy(pseudo, separation[0]);
@@ -1779,7 +1783,7 @@ void * Relayer(void * SocketClient)
                 pthread_mutex_unlock(&mutex);
             }
             else if(strcmp(separation[0],"@deplace") == 0){
-                printf("On va bannir le client de socket  %s \n", separation[1]);
+                printf("On va deplacer le client de socket  %s \n", separation[1]);
                 pthread_mutex_lock(&mutex);
                 changerCanalClient(socketClient,separation[1], separation[2]);
                 pthread_mutex_unlock(&mutex);
