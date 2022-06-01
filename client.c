@@ -175,7 +175,7 @@ void connection(int socketClient)
         lus = read(socket, messageRecu, longueurMessage*sizeof(char)); 
         switch(lus)
         {
-            case -1: 
+            case -1:
                 perror("[-] La fonction read a échoué");
                 close(socket);
                 exit(-4);
@@ -201,10 +201,13 @@ void connection(int socketClient)
                         printf("→%s ",BLANC);   
                     }
                     else if(strcmp(messageRecu, "Mot de passe invalide") == 0){
-                        printf("\n[!] Le mot de passe est erroné\n");
+                        printf("%s[!] Le mot de passe est erroné\n",ROUGE);
                     }
                     else if(strcmp(messageRecu, "Votre identifiant est erroné") == 0){
-                        printf("\n[!] Votre identifiant n'existe pas\n");
+                        printf("%s[!] Votre identifiant n'existe pas\n",ROUGE);
+                    }
+                    else if(strcmp(messageRecu, "Votre etes déja connecté sur une autre session!") == 0){
+                        printf("%s[!] Votre etes déja connecté sur une autre session!\n",ROUGE);
                     }
                     else {
                         i++;
@@ -1048,7 +1051,7 @@ int main(int argc, char *argv[])
     }
     printf("○ Connection de la socket avec the server %sréussi %s○\n\n",BLEU_CIEL,BLANC);
 
-    printf("%s◘ CONNECTE ◘ \n",JAUNE);
+    printf("%s◘ CONNECTE ◘ %s\n",JAUNE,BLANC);
     connection(socketClient);    
 
     pthread_create(&tRecepteur, NULL, Recevoir, (void *) socketClient);

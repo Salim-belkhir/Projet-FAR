@@ -104,7 +104,7 @@ void * createCanal();
  * @param socket socket du client
  * @param canal Nom du channel sur lequel on sohaite se connecter
  */
-void changementCanal(void * SocketClient, char * canal);
+void changementCanal(int socket, char * canal);
 
 /**
  * @brief   

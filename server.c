@@ -671,6 +671,12 @@ void suppressionCanal(char * name, int socket){
     while(i < nombreSalons && nonExist && fin){
         if(strcmp(getName(salons[i]), name) == 0){
             nonExist = 0;
+            int j;
+            for(j = 0; j < getCount(salons[i]); j++)
+            {
+                reponseClient(salons[i]->clients[j],"Votre Canal a été supprimé Nous allons vous rediriger vers L'Accueil");
+                changementCanal(salons[i]->clients[j], "Accueil");
+            }
             free((void *) salons[i]);
             salons[i] = salons[i+1];
             nombreSalons--;
@@ -899,8 +905,7 @@ void * modifierCanalServer( void * salon){
  * @param socket socket du client
  * @param canal Nom du channel sur lequel on sohaite se connecter
  */
-void changementCanal(void * SocketClient, char * canal){
-    int socket = (long) SocketClient;
+void changementCanal(int socket, char * canal){
     int nonExist = 1;
     int i = 0;
     char data[1024]; // reponse a envoyé au client
@@ -1379,26 +1384,32 @@ void * Relayer(void * SocketClient)
                         if(clientInscrit(pseudo) == 1){
                             printf("J'ai passé la vérification du nom\n");
                             if(verificationIdentifiants(pseudo, mdp) == 1){
-                                printf("J'ai tout validé\n");
-                                strcpy(messageEnvoi,"valide");
-                                reponseClient(socketClient, messageEnvoi);                            
-                                printf("le pseudo choisit est valide!\n");
-                                printf("on ajoute : %d a la file\n", socketClient);
-                                char * pseudo = malloc(longueurMessage* sizeof(char));
-                                strcpy(pseudo, messageRecu);
-                                char * canal = malloc(100* sizeof(char));
-                                strcpy(canal, getName(salons[0]));
-                                printf("on ajoute le pseudo : %s au canal %s\n",pseudo, canal);
-                                ajouter_debut(utilisateursConnectes,socketClient, pseudo, canal,1);
-                                printf("taille apres l'ajout : %d \n",liste_taille(utilisateursConnectes));
-                                afficherListe(utilisateursConnectes);  
-                                //une fois qu'on a réussi à connecter le client, on lance le thread qui va relayer les messages
-                                nombreClientsConnectes = liste_taille(utilisateursConnectes);              
-                                // chaque client à son propre identifiant 
-                                ajouter_client(salons[0], socketClient);
-                                printf("Le nombre de clients connectés a l'accueil est %d \n",salons[0]->count);
-                                afficheClients(salons[0]);
-                                i++;
+                                // Il reste que à vérifier si le client n'est pas déja connecté à une autre session
+                                if(existPseudo(pseudo) == 0)
+                                {
+                                    printf("J'ai tout validé\n");
+                                    strcpy(messageEnvoi,"valide");
+                                    reponseClient(socketClient, messageEnvoi);                            
+                                    printf("le pseudo choisit est valide!\n");
+                                    printf("on ajoute : %d a la file\n", socketClient);
+                                    char * pseudo = malloc(longueurMessage* sizeof(char));
+                                    strcpy(pseudo, messageRecu);
+                                    char * canal = malloc(100* sizeof(char));
+                                    strcpy(canal, getName(salons[0]));
+                                    printf("on ajoute le pseudo : %s au canal %s\n",pseudo, canal);
+                                    ajouter_debut(utilisateursConnectes,socketClient, pseudo, canal,1);
+                                    printf("taille apres l'ajout : %d \n",liste_taille(utilisateursConnectes));
+                                    afficherListe(utilisateursConnectes);  
+                                    //une fois qu'on a réussi à connecter le client, on lance le thread qui va relayer les messages
+                                    nombreClientsConnectes = liste_taille(utilisateursConnectes);              
+                                    // chaque client à son propre identifiant 
+                                    ajouter_client(salons[0], socketClient);
+                                    printf("Le nombre de clients connectés a l'accueil est %d \n",salons[0]->count);
+                                    afficheClients(salons[0]);
+                                    i++;
+                                } else {
+                                    reponseClient(socketClient,"Votre etes déja connecté sur une autre session!");
+                                }
                             }
                             else{
                                 reponseClient(socketClient, "Mot de passe invalide");
@@ -1573,7 +1584,7 @@ void * Relayer(void * SocketClient)
             }
             else if(strcmp(separation[0],"join") == 0){
                 printf("On va essayer de joindre un nouveau channel\n");
-                changementCanal(SocketClient, separation[1]);       
+                changementCanal(socketClient, separation[1]);       
             }
             else if(strcmp(separation[0],"createChannel") == 0){
                 printf("On va procéder a la creation du channel\n");
