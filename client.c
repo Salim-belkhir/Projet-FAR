@@ -941,7 +941,9 @@ void * Envoyer(void * socketClient)
         {    
             ecrits = write(socket, messageEnvoi,strlen(messageEnvoi));
             char ** separation;
-            separation = Separation(messageEnvoi);
+            char * msg = malloc(longueurMessage*sizeof(char));
+            strcpy(msg,messageEnvoi);
+            separation = Separation(msg);
             switch(ecrits)
             {
                 case -1: 
@@ -971,7 +973,7 @@ void * Envoyer(void * socketClient)
                         modifierCanal();
                     }
                     else{
-                        printf("%s○ Message %s%s %senvoyé avec %ssuccés ☻ (%d octets) %s○\n",MAUVE,BLANC,messageEnvoi,MAUVE,BLEU_CIEL,ecrits,MAUVE);
+                        printf("%s○ Message %s%s%s envoyé avec %ssuccés ☻ (%d octets) %s○\n",MAUVE,BLANC,messageEnvoi,MAUVE,BLEU_CIEL,ecrits,MAUVE);
                     }
             }
         }

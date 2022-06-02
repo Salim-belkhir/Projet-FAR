@@ -1397,6 +1397,7 @@ void changerCanalClient(int socket, char * client, char * canal){
                 strcat(message,END);
                 strcat(message, getCanalClient(utilisateursConnectes, id));
                 printf("Identifiant du client a deplacer : %d", id);
+                reponseClient(id,message);
             } else {
                 reponseClient(socket, "\033[31;01m LE CLIENT QUE VOUS SOUHAITEZ DEPLACER N'EST PAS CONNECTE !\n");
             }
